@@ -17,6 +17,15 @@ export const env = createEnv({
    */
   client: {
     // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    NEXT_PUBLIC_RPC_URL: z.string(),
+    NEXT_PUBLIC_LAUNCHTUBE_URL: z.string(),
+    NEXT_PUBLIC_LAUNCHTUBE_JWT: z.string(),
+    NEXT_PUBLIC_NETWORK_PASSPHRASE: z.string(),
+    NEXT_PUBLIC_WALLET_WASM_HASH: z.string(),
+    NEXT_PUBLIC_MERCURY_PROJECT_NAME: z.string(),
+    NEXT_PUBLIC_MERCURY_URL: z.string(),
+    NEXT_PUBLIC_MERCURY_JWT: z.string(),
+    NEXT_PUBLIC_NATIVE_CONTRACT_ID: z.string(),
   },
 
   /**
@@ -25,7 +34,15 @@ export const env = createEnv({
    */
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
-    // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
+    NEXT_PUBLIC_RPC_URL: process.env.NEXT_PUBLIC_RPC_URL,
+    NEXT_PUBLIC_LAUNCHTUBE_URL: process.env.NEXT_PUBLIC_LAUNCHTUBE_URL,
+    NEXT_PUBLIC_LAUNCHTUBE_JWT: process.env.NEXT_PUBLIC_LAUNCHTUBE_JWT,
+    NEXT_PUBLIC_NETWORK_PASSPHRASE: process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
+    NEXT_PUBLIC_WALLET_WASM_HASH: process.env.NEXT_PUBLIC_WALLET_WASM_HASH,
+    NEXT_PUBLIC_MERCURY_PROJECT_NAME: process.env.NEXT_PUBLIC_MERCURY_PROJECT_NAME,
+    NEXT_PUBLIC_MERCURY_URL: process.env.NEXT_PUBLIC_MERCURY_URL,
+    NEXT_PUBLIC_MERCURY_JWT: process.env.NEXT_PUBLIC_MERCURY_JWT,
+    NEXT_PUBLIC_NATIVE_CONTRACT_ID: process.env.NEXT_PUBLIC_NATIVE_CONTRACT_ID,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
