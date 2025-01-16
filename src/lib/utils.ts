@@ -10,6 +10,29 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function copyToClipboard(text?: string, silent?: boolean) {
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    if (!silent) alert('Copied to clipboard');
+  }).catch(() => {
+    if (!silent) alert('Failed to copy to clipboard');
+  });
+}
+
+export function fromStroops(amount: number | string | null): string {
+  if (!amount) return '0';
+  return (Number(amount) / 10_000_000).toFixed(6);
+}
+
+export function toStroops(amount: number) {
+  return amount * 10_000_000;
+}
+
+export function shortAddress(address?: string | null) {
+  if (!address) return '';
+  return address.slice(0, 4) + '...' + address.slice(-4);
+}
+
 export const rpc = new Server(env.NEXT_PUBLIC_RPC_URL);
 
 export const account = new PasskeyKit({
@@ -25,6 +48,21 @@ export const server = new PasskeyServer({
   mercuryProjectName: env.NEXT_PUBLIC_MERCURY_PROJECT_NAME,
   mercuryUrl: env.NEXT_PUBLIC_MERCURY_URL,
   mercuryJwt: env.NEXT_PUBLIC_MERCURY_JWT,
+});
+
+console.log('Server config:', {
+    rpcUrl: server.rpcUrl,
+    launchtubeUrl: server.launchtubeUrl,
+    mercuryUrl: server.mercuryUrl
+});
+
+console.log('Environment check:', {
+    rpcUrl: env.NEXT_PUBLIC_RPC_URL,
+    launchtubeUrl: env.NEXT_PUBLIC_LAUNCHTUBE_URL,
+    mercuryUrl: env.NEXT_PUBLIC_MERCURY_URL,
+    // Don't log JWTs in production!
+    hasLaunchtubeJwt: !!env.NEXT_PUBLIC_LAUNCHTUBE_JWT,
+    hasMercuryJwt: !!env.NEXT_PUBLIC_MERCURY_JWT
 });
 
 export const mockPubkey = StrKey.encodeEd25519PublicKey(Buffer.alloc(32))

@@ -11,7 +11,7 @@ const config = {
         'passkey-factory-sdk', 
         'passkey-kit-sdk',
         'sac-sdk',
-    ]
+    ],
 };
 
 export default config;

@@ -26,6 +26,7 @@ export const env = createEnv({
     NEXT_PUBLIC_MERCURY_URL: z.string(),
     NEXT_PUBLIC_MERCURY_JWT: z.string(),
     NEXT_PUBLIC_NATIVE_CONTRACT_ID: z.string(),
+    NEXT_PUBLIC_ZAFEGARD_WASM_HASH: z.string(),
   },
 
   /**
@@ -43,6 +44,7 @@ export const env = createEnv({
     NEXT_PUBLIC_MERCURY_URL: process.env.NEXT_PUBLIC_MERCURY_URL,
     NEXT_PUBLIC_MERCURY_JWT: process.env.NEXT_PUBLIC_MERCURY_JWT,
     NEXT_PUBLIC_NATIVE_CONTRACT_ID: process.env.NEXT_PUBLIC_NATIVE_CONTRACT_ID,
+    NEXT_PUBLIC_ZAFEGARD_WASM_HASH: process.env.NEXT_PUBLIC_ZAFEGARD_WASM_HASH,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
