@@ -25,6 +25,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
+import { Arrow } from "@radix-ui/react-dropdown-menu"
+import { Keypair } from "@stellar/stellar-sdk"
+import { api } from "~/trpc/react"
+import { account, ClientTRPCErrorHandler } from "~/lib/utils"
+import toast from "react-hot-toast"
 
 const labels = [
   "feature",
@@ -36,25 +41,50 @@ const labels = [
   "maintenance",
 ]
 
-export function SignersActions() {
-  const [open, setOpen] = React.useState(false)
+interface SignersActionsProps {
+  handleSep10?: (publicKey: string) => void;
+  handleTransfer: ({keypair, to, amount, keyId}: {keypair?: Keypair, to: string, amount: number, keyId?: string}) => void;
+  secret?: string;
+  publicKey?: string;
+  keyId?: string;
+}
+
+export function SignersActions({ handleTransfer, handleSep10, secret, publicKey, keyId }: SignersActionsProps) {
+  const [open, setOpen] = React.useState(false);
+  const [transferAmount, setTransferAmount] = React.useState(0);
+  const [transferTo, setTransferTo] = React.useState("");
+
+const executeTransfer = async () => {
+  if (!handleTransfer || !(secret || keyId)) return;
+  if (!transferTo || !transferAmount) {alert("Please fill in all fields"); return;}
+  if (secret) {
+    await handleTransfer({keypair: Keypair.fromSecret(secret), to: transferTo, amount: transferAmount, keyId});
+  } else {
+    await handleTransfer({to: transferTo, amount: transferAmount, keyId});
+  }
+}
 
   return (
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm">
-            <MoreHorizontal />
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-[200px]">
+        <DropdownMenuContent align="center" side="right">
+          <Arrow/>
           <DropdownMenuLabel>Signer Actions</DropdownMenuLabel>
           <DropdownMenuGroup>
-            <DropdownMenuItem>Transfer</DropdownMenuItem>
             <DropdownMenuItem>Share</DropdownMenuItem>
+            {handleSep10 && publicKey && <DropdownMenuItem onClick={() => handleSep10(publicKey)}>Sep10</DropdownMenuItem>}
             <DropdownMenuSeparator />
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>Attach policy</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="p-0">
+              <DropdownMenuSubContent 
+                className="p-0" 
+                sideOffset={-4}
+                alignOffset={-4}
+              >
                 <Command>
                   <CommandInput
                     placeholder="Filter label..."
@@ -88,6 +118,9 @@ export function SignersActions() {
                     Transfer to
                   </label>
                   <input
+                    onChange={(e) => {
+                        e.preventDefault();
+                        setTransferTo(e.target.value)}}
                     id="recipient"
                     type="text"
                     className="w-full px-3 py-2 text-sm border rounded-md"
@@ -105,9 +138,12 @@ export function SignersActions() {
                     step="any"
                     className="w-full px-3 py-2 text-sm border rounded-md"
                     placeholder="0.00"
+                    onChange={(e) => {
+                        e.preventDefault();
+                        setTransferAmount(Number(e.target.value))}}
                   />
                 </div>
-                <Button className="w-full" size="sm">
+                <Button onClick={executeTransfer} className="w-full" size="sm">
                   Transfer
                 </Button>
               </DropdownMenuSubContent>

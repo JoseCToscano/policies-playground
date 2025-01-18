@@ -1,11 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
 import { account, fundSigner, native, server, fundPubkey, fundKeypair } from "~/lib/utils";
 import base64url from "base64url";
-import { Address, Keypair, Operation, scValToNative, rpc as SorobanRpc, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
+import { Address, hash, Keypair, Operation, scValToNative, StrKey, rpc as SorobanRpc, TransactionBuilder, xdr, Transaction } from "@stellar/stellar-sdk";
 import { SignerStore } from "passkey-kit";
 import { useSearchParams } from "./useSearchParams";
 import { env } from "~/env";
 import { Client, Contract as ZafeguardContract } from "zafegard-policy-sdk";
+import toast from "react-hot-toast";
+import { AssembledTransaction } from "@stellar/stellar-sdk/contract";
 const ADMIN_KEY = "AAAAEAAAAAEAAAABAAAAEQAAAAEAAAAA"; // TODO very rough until we're actually parsing the limits object
 
 export const useSmartWallet = () => {
@@ -26,7 +28,13 @@ export const useSmartWallet = () => {
         const _keyId = getParam('keyId');
         if (_keyId) {
             setKeyId(_keyId);
-            connect(_keyId);
+            connect(_keyId).then((_contractId) => {
+                queryZafeguardPolicyAddress(_contractId);
+                getSubWallets();
+            });
+        } else if (localStorage.hasOwnProperty("zg:subwallets")) {
+            localStorage.removeItem("zg:subwallets");
+            setSubWallets(null);
         }
     }, [getParam]);
 
@@ -36,77 +44,80 @@ export const useSmartWallet = () => {
         }
     }, [contractId]);
 
-        async function initWallet(contractId_: string) {
-            try {
-                const rpc = new SorobanRpc.Server(env.NEXT_PUBLIC_RPC_URL);
-                const source = await rpc.getAccount(fundPubkey);
-                const transaction_before = new TransactionBuilder(source, {
-                    fee: "0",
-                    networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE
-                })
-                    .addOperation(
-                        Operation.createCustomContract({
-                            address: Address.fromString(fundPubkey),
-                            wasmHash: Buffer.from(
-                                env.NEXT_PUBLIC_ZAFEGARD_WASM_HASH,
-                                "hex",
-                            ),
-                            salt: Address.fromString(contractId_).toBuffer(),
-                        }),
-                    )
-                    .setTimeout(300)
-                    .build();
-    
-                const sim = await rpc.simulateTransaction(transaction_before);
-    
-                if (!SorobanRpc.Api.isSimulationSuccess(sim))
-                    throw new Error("Simulation failed");
-    
-                const transaction_after = TransactionBuilder.cloneFrom(
-                    transaction_before,
-                    {
-                        fee: (Number(sim.minResourceFee) + 10_000_000).toString(),
-                        sorobanData: sim.transactionData.build(),
-                    },
-                ).build();
-    
-                const op = transaction_after
-                    .operations[0] as Operation.InvokeHostFunction;
-    
-                op.auth![0] = sim.result!.auth[0]!;
-    
-                transaction_after.sign(await fundKeypair);
-    
-                const res1 = await rpc._sendTransaction(transaction_after);
-    
-                if (res1.status !== "PENDING")
-                    return alert("Transaction send failed");
-    
-                await new Promise((resolve) => setTimeout(resolve, 6000));
-    
-                const res2 = await rpc.getTransaction(res1.hash);
-    
-                if (res2.status !== "SUCCESS") return alert("Transaction failed");
-    
-                console.log('res2', res2);
-    
-                const _zafeguardPolicy = Address.contract(
-                    res2.returnValue!.address().contractId(),
-                ).toString();
-                console.log('zafeguardPolicy', _zafeguardPolicy);
-                setZafeguardPolicy(_zafeguardPolicy);
-                const _contract = new Client({
-                    rpcUrl: env.NEXT_PUBLIC_RPC_URL,
-                    contractId: _zafeguardPolicy!,
-                    networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
-                });
-                setContract(_contract);
-                console.log('contract: ', _contract);
-                const instance = await account.rpc.getContractData(
-                    _zafeguardPolicy!,
-                    xdr.ScVal.scvLedgerKeyContractInstance(),
-                );
-                const admin = instance.val
+    async function initWallet(contractId_: string) {
+        try {
+            const rpc = new SorobanRpc.Server(env.NEXT_PUBLIC_RPC_URL);
+            const source = await rpc.getAccount(fundPubkey);
+            const transaction_before = new TransactionBuilder(source, {
+                fee: "0",
+                networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE
+            })
+                .addOperation(
+                    Operation.createCustomContract({
+                        address: Address.fromString(fundPubkey),
+                        wasmHash: Buffer.from(
+                            env.NEXT_PUBLIC_ZAFEGARD_WASM_HASH,
+                            "hex",
+                        ),
+                        salt: Address.fromString(contractId_).toBuffer(),
+                    }),
+                )
+                .setTimeout(300)
+                .build();
+
+            const sim = await rpc.simulateTransaction(transaction_before);
+
+            if (!SorobanRpc.Api.isSimulationSuccess(sim))
+                throw new Error("Simulation failed");
+
+            const transaction_after = TransactionBuilder.cloneFrom(
+                transaction_before,
+                {
+                    fee: (Number(sim.minResourceFee) + 10_000_000).toString(),
+                    sorobanData: sim.transactionData.build(),
+                },
+            ).build();
+
+            const op = transaction_after
+                .operations[0] as Operation.InvokeHostFunction;
+
+            op.auth![0] = sim.result!.auth[0]!;
+
+            transaction_after.sign(await fundKeypair);
+
+            const res1 = await rpc._sendTransaction(transaction_after);
+
+            if (res1.status !== "PENDING")
+                return toast.error("Transaction send failed");
+
+            await new Promise((resolve) => setTimeout(resolve, 6000));
+
+            const res2 = await rpc.getTransaction(res1.hash);
+
+            if (res2.status !== "SUCCESS") return toast.error("Transaction failed");
+
+            console.log('res2', res2);
+
+            const _zafeguardPolicy = Address.contract(
+                res2.returnValue!.address().contractId(),
+            ).toString();
+            console.log('zafeguardPolicy', _zafeguardPolicy);
+            setZafeguardPolicy(_zafeguardPolicy);
+            const _contract = new Client({
+                rpcUrl: env.NEXT_PUBLIC_RPC_URL,
+                contractId: _zafeguardPolicy!,
+                networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
+            });
+            setContract(_contract);
+            console.log('contract: ', _contract);
+            const instance = await account.rpc.getContractData(
+                _zafeguardPolicy!,
+                xdr.ScVal.scvLedgerKeyContractInstance(),
+            );
+
+            console.log('instance:', instance);
+
+            const admin = instance.val
                 .contractData()
                 .val()
                 .instance()
@@ -116,78 +127,74 @@ export const useSmartWallet = () => {
                         return true;
                     }
                 });
-                
-                if (admin?.length) return;
-                
-                const at = await _contract.init({
-                    admin: contractId_,
-                });
-                
-                await account.sign(at, { keyId });
-                
-                const res = await server.send(at.built!);
-                console.log('Init response:', res);
-            } catch (error) {
-                console.error('Error initializing wallet:', error);
-            }
+
+            if (admin?.length) return;
+
+            console.log('admin:', admin);
+            const at = await _contract.init({
+                admin: contractId_,
+            });
+            console.log('at:', at);
+            await account.sign(at, { keyId });
+
+            const res = await server.send(at.built!);
+            console.log('Init response:', res);
+        } catch (error) {
+            console.error('Error initializing wallet:', error);
         }
+    }
+
+
 
     const create = async () => {
-    try {
+        try {
             const user = prompt("Give this passkey a name");
-    
+
             if (!user) return;
-    
+
             console.log('Creating wallet with user:', user);
-            
-            const result = await account.createWallet("Super Peach", user);
+
+            const result = await account.createWallet("Policies Playground", user);
             console.log('Create wallet result:', result);
-    
+
             const {
                 keyId: kid,
                 contractId: cid,
                 signedTx,
+                keyIdBase64
             } = result;
-            
+
             const res = await server.send(signedTx);
-    
+
             console.log(res, kid, cid);
-    
-            const b64KeyId = base64url(kid);
-            setKeyId(b64KeyId);
-            localStorage.setItem("sp:keyId", b64KeyId);
-    
+
+            setKeyId(keyIdBase64);
             setContractId(cid);
-            console.log('setting keyId', b64KeyId);
-            setParams({ keyId: b64KeyId });
-            
-            // Run getWalletSigners and fundWallet in parallel
-            await Promise.all([
-                getWalletSigners(),
-                fundWallet(cid),
-                initWallet(cid)
-            ]);
-            console.log('initWallet done', cid);
-            
-            // initWallet needs to run after funding, so keep it sequential
-    } catch (error) {
-        console.error('Detailed error:', {
-            message: error.message,
-            stack: error.stack,
-            response: error.response // If it's an API error
-        });
-        alert((error as Error)?.message ?? "Unknown error");
-    }
+            setParams({ keyId: keyIdBase64 });
+
+            await initWallet(cid)
+            await fundWallet(cid),
+                await getWalletSigners(),
+                console.log('initWallet done', cid);
+
+        } catch (error) {
+            console.error('Detailed error:', {
+                message: error.message,
+                stack: error.stack,
+                response: error.response // If it's an API error
+            });
+            toast.error((error as Error)?.message ?? "Unknown error");
+        }
     }
 
     const getWalletSigners = useCallback(async () => {
         console.log('Getting signers for:', { contractId, keyId });
         if (!contractId || !keyId) return;
-        
+
         try {
             // Add logging for the request
             console.log('Making request to server.getSigners');
-            
+
             // Wrap the getSigners call in a try-catch to see the raw response
             let rawResponse;
             try {
@@ -241,207 +248,228 @@ export const useSmartWallet = () => {
         console.log('funding wallet', id);
         setIsFunding(true);
         try {
-		const { built, ...transfer } = await native.transfer({
-			to: id,
-			from: fundPubkey,
-			amount: BigInt(100 * 10_000_000),
-		});
+            const { built, ...transfer } = await native.transfer({
+                to: id,
+                from: fundPubkey,
+                amount: BigInt(100 * 10_000_000),
+            });
 
-		await transfer.signAuthEntries({
-			address: fundPubkey,
-			signAuthEntry: fundSigner.signAuthEntry,
-		});
+            await transfer.signAuthEntries({
+                address: fundPubkey,
+                signAuthEntry: fundSigner.signAuthEntry,
+            });
 
-		const res = await server.send(built!);
+            const res = await server.send(built!);
 
-		console.log('wallet fund', res);
+            console.log('wallet fund', res);
 
-		await getWalletBalance(id);
-	} catch (error) {
-		console.error(error);
-		alert((error as Error)?.message ?? "Unknown error");
+            await getWalletBalance(id);
+        } catch (error) {
+            console.error(error);
+            toast.error((error as Error)?.message ?? "Unknown error");
         } finally {
             setIsFunding(false);
         }
     }
 
     const getWalletBalance = async (id: string) => {
-		const { result } = await native.balance({ id });
-		setBalance(result.toString())
-		console.log('balance: ', result.toString());
-	}
+        const { result } = await native.balance({ id });
+        setBalance(result.toString())
+        console.log('balance: ', result.toString());
+    }
 
-    const addSigner_Ed25519 = async (): Promise<{publicKey: string | null}> => {
+    const addSigner_Ed25519 = async (): Promise<{ keypair: Keypair }> => {
+        console.log("Adding signer", keyId);
+        if (!keyId) {
+            throw new Error("No keyId found");
+        }
+        setLoading(true);
+
         try {
-            console.log("Adding signer", keyId);
-            if (!keyId) {
-                alert("No keyId found");
-                return { publicKey: null };
-            }
-            setLoading(true);
-
             const keypair = Keypair.random();
             const at = await account.addEd25519(keypair.publicKey(), new Map(), SignerStore.Temporary);
 
-            await account.sign(at, { keyId });
-            const res = await server.send(at.built!);
+            const signedTx = await account.sign(at, { keyId });
+            const res = await server.send(signedTx);
 
-            console.log(res);
-            return { publicKey: keypair.publicKey() };
+            // Store the secret key in localStorage
+            localStorage.setItem(
+                "zg:ed25519_signers",
+                JSON.stringify({
+                    ...JSON.parse(
+                        localStorage.getItem("zg:ed25519_signers") || "{}"
+                    ),
+                    [keypair.publicKey()]: keypair.secret(),
+                })
+            );
+
+            console.log('Transaction response:', res);
+            return { keypair };
         } catch (error) {
-            console.error(error);
-            alert((error as Error)?.message ?? "Unknown error");
-            return { publicKey: null };
+            console.error('Add signer error:', error);
+            throw error;
         } finally {
             setLoading(false);
         }
     }
 
-    const connect = async (_keyId: string) => {
+    const connect = async (_keyId: string): Promise<string> => {
         const { keyIdBase64, contractId } = await account.connectWallet({ keyId: _keyId });
-
         setContractId(contractId);
-    
-        
+        return contractId;
     }
 
-// Option 2: Just include the function
-useEffect(() => {
-    console.log("Triggering getWalletSigners through useEffect");
-    if (contractId && keyId) {
-        getWalletSigners();
-    }
-}, [getWalletSigners]);
+    /**
+     * Set the zafeguard policy
+     * Allows to locate the contract in the stellar network without actually querying the network
+     * Address is deterministic, i.e. given the same inputs (network, deployer, salt), it will always compute the same address
+     */
+    function queryZafeguardPolicyAddress(_contractId: string) {
+        const contractPreimage = xdr.HashIdPreimage.envelopeTypeContractId(
+            new xdr.HashIdPreimageContractId({
+                networkId: hash(
+                    Buffer.from(env.NEXT_PUBLIC_NETWORK_PASSPHRASE, "utf8"),
+                ),
+                contractIdPreimage:
+                    xdr.ContractIdPreimage.contractIdPreimageFromAddress(
+                        new xdr.ContractIdPreimageFromAddress({
+                            address: Address.fromString(fundPubkey).toScAddress(),
+                            salt: Address.fromString(_contractId).toBuffer(),
+                        }),
+                    ),
+            }),
+        );
 
-async function ed25519Transfer() {
-    const secret = SECRET; // prompt('Enter secret key');
+        const zgPolicyAddress = Address.fromString(
+            StrKey.encodeContract(hash(contractPreimage.toXDR()))
+        ).toString();
 
-    if (secret) {
-        const keypair = Keypair.fromSecret(secret);
-        const at = await native.transfer({
-            to: fundPubkey,
-            from: contractId,
-            amount: BigInt(10_000_000),
+        console.log('zgPolicyAddress', zgPolicyAddress);
+        setZafeguardPolicy(zgPolicyAddress);
+
+        const _contract = new Client({
+            rpcUrl: env.NEXT_PUBLIC_RPC_URL,
+            contractId: zgPolicyAddress,
+            networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
         });
+        setContract(_contract);
 
-        await account.sign(at, { keypair });
-
-        // NOTE won't work if the ed25519 signer has a policy signer_key restriction
-        // If you want this to work you need to remove the policy restriction from the ed25519 signer first
-        // (though that will make the policy transfer less interesting)
-        const res = await server.send(at.built!);
-
-        console.log(res);
-
-        await getWalletBalance();
-    }
-}
-
-////
-async function policyTransfer() {
-    const keypair = Keypair.fromSecret(SECRET);
-
-    let at = await native.transfer({
-        to: fundPubkey,
-        from: contractId,
-        amount: BigInt(10_000_000),
-    });
-
-    await account.sign(at, { keypair });
-    await account.sign(at, { policy: SAMPLE_POLICY });
-
-    console.log(at.built!.toXDR());
-
-    const res = await server.send(at.built!);
-
-    console.log(res);
-
-    await getWalletBalance();
-}
-
-async function walletTransfer(signer: string, kind: string) {
-    if (kind === "Policy") {
-        return policyTransfer();
-    } else if (kind === "Ed25519") {
-        return ed25519Transfer();
+        return zgPolicyAddress;
     }
 
-    const at = await native.transfer({
-        to: fundPubkey,
-        from: contractId!,
-        amount: BigInt(10_000_000),
-    });
 
-    await account.sign(at, { keyId: signer });
-    const res = await server.send(at.built!);
-
-    console.log(res);
-
-    await getWalletBalance(contractId!);
-}
-
-const transfer_Ed25519 = async (from: string, to: string, amount: number) => {
-    try {
-
-        const at = await native.transfer({
-            from,
-            to,
-            amount: BigInt(1),
-        })
-
-        // await account.sign(at, { keypair });
-        const res = await server.send(at.built!);
-
-        console.log(res);
-
-        alert("😱 Transfer complete");
-    } catch {
-        alert("❌ Failed to transfer");
-    } finally {
-    }
-}
-
-async function addSubWallet() {
-    try {
-        setLoading(true);
-        if (!contract || !keyId || !contractId || !zafeguardPolicy) {
-            throw new Error('Contract or wallet not initialized');
+    // Option 2: Just include the function
+    useEffect(() => {
+        console.log("Triggering getWalletSigners through useEffect");
+        if (contractId && keyId) {
+            getWalletSigners();
         }
+    }, [getWalletSigners]);
 
-        const keypair = Keypair.random();
-        const interval = 10;
-        const amount = 100;
+    async function transfer({ keypair, to, amount, keyId }: { keyId?: string | null, keypair?: Keypair, to: string, amount: number }) {
+        if (!contractId) return;
 
-        console.log('Adding subwallet with:', {
-            smartWallet: contractId,
-            zafeguardPolicy,
-            keyId
-        });
-
-        const at = await contract.add_wallet({
-            user: keypair.rawPublicKey(),
-            sac: env.NEXT_PUBLIC_NATIVE_CONTRACT_ID,
-            interval,
+        const at = await native.transfer({
+            from: contractId,
+            to: fundPubkey,
             amount: BigInt(amount),
         });
 
-        // Sign the transaction and wait for it to complete
-        console.log('Signing transaction', at.built?.signatures);
-        const signedTx = await account.sign(at, { keyId });
-        console.log('Signatures after signing:', signedTx.built?.signatures);
-        
-        const res = await server.send(signedTx);
-        console.log('Transaction response:', res);
+        let signedTx;
+        if (keypair) {
+            signedTx = await account.sign(at, { keypair });
+        } else if (keyId) {
+            signedTx = await account.sign(at, { keyId });
+        } else {
+            throw new Error('No keypair or keyId found');
+        }
 
-        localStorage.setItem(
-            "zg:subwallets",
-            JSON.stringify({
-                ...JSON.parse(
-                    localStorage.getItem("zg:subwallets") || "{}",
-                ),
-                [keypair.publicKey()]: [keypair.secret(), interval, amount],
-            }),
-        );
+        try {
+            const res = await server.send(signedTx);
+            console.log(res);
+        } catch (error: any) {
+            console.error('Transfer error:', {
+                message: error.message,
+                code: error.response?.status,
+                details: error.response?.data?.extras,
+                raw: error
+            });
+
+            // Extract meaningful error message
+            let errorMessage = "Transaction failed: ";
+            if ((error?.error as string).includes("InvalidAction")) {
+                errorMessage += 'Invalid action'
+            } else if (error.message) {
+                errorMessage += error.message;
+            } else {
+                errorMessage += "Unknown error occurred";
+            }
+
+            toast.error(errorMessage);
+        }
+
+        await getWalletBalance(contractId);
+    }
+
+    async function addSubWallet() {
+        console.log('addSubWallet function called');
+        try {
+            setLoading(true);
+            console.log('contractId:', contractId);
+            console.log('keyId:', keyId);
+            console.log('contract:', contract);
+            console.log('zafeguardPolicy:', zafeguardPolicy);
+            if (!contract || !keyId || !contractId || !zafeguardPolicy) {
+                throw new Error('Contract or wallet not initialized');
+            }
+
+            const keypair = Keypair.random();
+            const interval = 10;
+            const amount = 100;
+
+            console.log('Adding subwallet with:', {
+                smartWallet: contractId,
+                zafeguardPolicy,
+                keyId
+            });
+
+            const at = await contract.add_wallet({
+                user: keypair.rawPublicKey(),
+                sac: env.NEXT_PUBLIC_NATIVE_CONTRACT_ID,
+                interval,
+                amount: BigInt(amount),
+            });
+
+            // Sign the transaction and wait for it to complete
+            console.log('Signing transaction', at.built?.signatures);
+            const signedTx = await account.sign(at, { keyId });
+            console.log('Signatures after signing:', signedTx.built?.signatures);
+
+            const res = await server.send(signedTx);
+            console.log('Transaction response:', res);
+
+            localStorage.setItem(
+                "zg:subwallets",
+                JSON.stringify({
+                    ...JSON.parse(
+                        localStorage.getItem("zg:subwallets") || "{}",
+                    ),
+                    [keypair.publicKey()]: [keypair.secret(), interval, amount],
+                }),
+            );
+
+            getSubWallets();
+        } catch (error) {
+            console.error('Add subwallet error:', error);
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+
+
+    function getSubWallets() {
 
         const _subwallets = new Map<string, [string, number, number]>(
             Object.entries(
@@ -450,13 +478,56 @@ async function addSubWallet() {
         );
 
         setSubWallets(_subwallets);
-    } catch (error) {
-        console.error('Add subwallet error:', error);
-        throw error;
-    } finally {
-        setLoading(false);
     }
-}
+
+    function getSubWalletSecret(publicKey: string) {
+        const subwallets = JSON.parse(localStorage.getItem("zg:subwallets") || "{}");
+        return subwallets[publicKey][0];
+    }
+
+    function getSignerSecret(publicKey: string) {
+        const signers = JSON.parse(localStorage.getItem("zg:ed25519_signers") || "{}");
+        return signers[publicKey];
+    }
+
+    const getKeypair = (publicKey: string) => {
+        const secret = getSignerSecret(publicKey);
+        return secret ? Keypair.fromSecret(secret) : null;
+    }
+
+    const signXDR = async (xdrString: string, signerType: 'subwallet:Ed25519' | 'Ed25519' | 'Secp256r1', publicKey?: string) => {
+        if (signerType.includes('Ed25519')) {
+            if (!publicKey) throw new Error('No public key found');
+            const secret = signerType.includes('subwallet') ? getSubWalletSecret(publicKey) : getSignerSecret(publicKey);
+            if (!secret) throw new Error('No secret found');
+            console.log('signXDR:', xdrString, signerType, publicKey, secret);
+            const keypair = Keypair.fromSecret(secret);
+
+            try {
+                // TODO Use Transaction.fromXDR for SEP-10 challenge transactions
+                const transaction = new Transaction(
+                    xdrString,
+                    env.NEXT_PUBLIC_NETWORK_PASSPHRASE
+                );
+                transaction.sign(keypair);
+                return transaction.toXDR();
+            } catch (error) {
+                console.error('XDR parsing error:', {
+                    xdrString,
+                    error,
+                    type: typeof xdrString
+                });
+                throw error;
+            }
+        } else if (signerType === 'Secp256r1') {
+            if (!keyId) throw new Error('No public key found');
+            const transaction = TransactionBuilder.fromXDR(xdrString, env.NEXT_PUBLIC_NETWORK_PASSPHRASE);
+            return account.sign(transaction, { keyId });
+        } else {
+            throw new Error('Invalid signer type');
+        }
+    }
+
 
     return {
         create,
@@ -473,5 +544,8 @@ async function addSubWallet() {
         isFunding,
         subWallets,
         addSubWallet,
+        transfer,
+        keyId,
+        signXDR,
     }
 }

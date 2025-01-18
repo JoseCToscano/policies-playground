@@ -5,7 +5,7 @@ import { Badge } from '~/components/ui/badge'
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { useSmartWallet } from '~/hooks/useSmartWallet'
-import { copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
+import { account, ClientTRPCErrorHandler, copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
 import { MoreHorizontal, PackagePlus } from "lucide-react"
 import {
   DropdownMenu,
@@ -14,12 +14,47 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
 import { SignersActions } from '../_components/signers-actions'
+import { Keypair } from '@stellar/stellar-sdk'
+import { api } from '~/trpc/react'
+import toast from 'react-hot-toast'
+import { AssembledTransaction } from '@stellar/stellar-sdk/contract'
+import { env } from '~/env'
+import { useSep10 } from '~/hooks/useSep10'
 
 export default function PasskeyCreation() {
   const [status, setStatus] = useState<'idle' | 'creating' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [accountDetails, setAccountDetails] = useState<{ username: string; userId: string } | null>(null)
-  const { create, getWalletSigners, addSubWallet, subWallets, fundWallet, balance, contractId, addSigner_Ed25519, loading, signers, isFunding } = useSmartWallet();
+  const { create, getWalletSigners, signXDR, addSubWallet, transfer, subWallets, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, signers, isFunding } = useSmartWallet();
+
+  const [isTransfering, setIsTransfering] = useState(false);
+
+  const { getAuthChallenge, submitAuthChallenge } = useSep10();
+
+  const getSep10AuthToken = async (publicKey: string) => {
+    try {
+      const challenge = await getAuthChallenge({ publicKey });
+      console.log('challenge:', challenge, publicKey, account.wallet?.options, account.wallet?.spec);
+      const signedTx = await signXDR(challenge.transaction, 'Ed25519', publicKey);
+      console.log('signedTx for challenge:', signedTx, typeof signedTx);
+      const authToken = await submitAuthChallenge({ xdr: typeof signedTx === 'string' ? signedTx : signedTx.toXDR() });
+      console.log('authToken:', authToken);
+    } catch (error) {
+      console.error('Error getting Sep10 auth token:', error);
+    }
+  }
+
+
+  useEffect(() => {
+    console.log('subWallets:', subWallets);
+    console.log('signers:', signers);
+  }, [subWallets, signers]);
+
+  const handleTransfer = async ({ keypair, to, amount }: { keyId?: string, keypair?: Keypair, to: string, amount: number }) => {
+    setIsTransfering(true);
+    await transfer({ keypair, to, amount, keyId });
+    setIsTransfering(false);
+  }
 
 
   const handleCreate = async () => {
@@ -35,18 +70,18 @@ export default function PasskeyCreation() {
 
   const handleAddSigner = async () => {
     console.log("Adding signer ...");
-    const { publicKey } = await addSigner_Ed25519();
-    if (publicKey) {
-      console.log("Signer added:", publicKey);
+    const { keypair } = await addSigner_Ed25519();
+    if (keypair) {
+      console.log("Signer added:", keypair.publicKey());
     } else {
       console.error("Failed to add signer");
     }
     await getWalletSigners();
   }
-  
+
   const handleAddSubWallet = async () => {
     console.log("Adding subwallet ...");
-     await addSubWallet();
+    await addSubWallet();
     await getWalletSigners();
   }
 
@@ -88,34 +123,33 @@ export default function PasskeyCreation() {
               <p><span className="font-medium">Balance:</span> {fromStroops(balance)}</p>
             </div>
             { /** Signers */}
-            {signers.map(({key, kind}) => (
+            {signers.map(({ key, kind }) => (
               <div className="bg-gray-100 mt-1 pl-1 rounded-md flex justify-between gap-0 items-center border-[1px] border-gray-300" key={key}>
                 <div className="flex w-full items-center gap-2">
                   <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-gray-800" variant={"outline"}>{kind}</Badge>
-                  <p>{shortAddress(key)}</p>
+                  <p onClick={() => { copyToClipboard(key) }}>{shortAddress(key)}</p>
                 </div>
                 <div className="flex items-end gap-0">
-                <SignersActions />
-              </div>
+                  <SignersActions handleTransfer={handleTransfer} keyId={keyId || undefined} publicKey={key} handleSep10={getSep10AuthToken} />
+                </div>
               </div>
             ))}
-             { /** Sub Wallets */}
+            { /** Sub Wallets */}
             {subWallets && Array.from(subWallets).map(([key, [secret, interval, amount]]) => (
               <div className="bg-gray-100 mt-1 pl-1 rounded-md flex justify-between gap-0 items-center border-[1px] border-gray-300" key={key}>
                 <div className="flex w-full items-center gap-2">
                   <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-gray-800" variant={"outline"}>Policy signer</Badge>
-                  <p>{shortAddress(key)}</p>
+                  <p onClick={() => { copyToClipboard(key) }}>{shortAddress(key)}</p>
                   <p>{amount}</p>
-                  <p>{shortAddress(secret)}</p>
                 </div>
                 <div className="flex items-end gap-0">
-                  <SignersActions />
+                  <SignersActions handleTransfer={handleTransfer} secret={secret} />
                 </div>
               </div>
             ))}
             {/** Actions */}
             <div className="flex justify-center mt-4 gap-2">
-              {contractId && <Button onClick={()=>{fundWallet(contractId!)}}>{isFunding ? "Funding..." : "Fund Wallet"}</Button>}
+              {contractId && <Button onClick={() => { fundWallet(contractId!) }}>{isFunding ? "Funding..." : "Fund Wallet"}</Button>}
               <Button onClick={handleAddSigner}>{loading ? "Adding..." : "Add Signer"}</Button>
               <Button onClick={handleAddSubWallet}>{loading ? "Adding..." : "Add Sub wallet"}</Button>
             </div>
