@@ -5,36 +5,44 @@ import { Badge } from '~/components/ui/badge'
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { useSmartWallet } from '~/hooks/useSmartWallet'
-import { account, ClientTRPCErrorHandler, copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
-import { MoreHorizontal, PackagePlus } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu"
+import { account, copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
+import { Copy, DollarSign, Euro, ScanFaceIcon } from "lucide-react"
 import { SignersActions } from '../_components/signers-actions'
 import { Keypair } from '@stellar/stellar-sdk'
-import { api } from '~/trpc/react'
-import toast from 'react-hot-toast'
-import { AssembledTransaction } from '@stellar/stellar-sdk/contract'
 import { env } from '~/env'
 import { useSep10 } from '~/hooks/useSep10'
 import { loadStripeOnramp } from '@stripe/crypto';
 import { OnrampElement } from '~/app/_components/stripe-onramp'
 import { CryptoElements } from '~/app/_components/stripe-onramp'
 import axios from 'axios'
+import { RecentTransactions } from "~/components/recent-transactions";
+import { EmployeeSubaccountList } from "~/components/employee-subaccount-list";
+import { AccountSwitcher } from '~/app/_components/account-switcher'
+import { api } from '~/trpc/react'
 
+const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
+const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
 export default function PasskeyCreation() {
   const [status, setStatus] = useState<'idle' | 'creating' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [accountDetails, setAccountDetails] = useState<{ username: string; userId: string } | null>(null)
-  const { create, getWalletSigners, signXDR, addSubWallet, transfer, subWallets, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, signers, isFunding } = useSmartWallet();
+  const { create, connect, getWalletSigners, signXDR, addSubWallet, transfer, subWallets, removeSubWallet, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, signers, isFunding, getWalletBalance, } = useSmartWallet();
 
   const [isTransfering, setIsTransfering] = useState(false);
 
   const { getAuthChallenge, submitAuthChallenge } = useSep10();
+
+  const { data: contractBalance } = api.stellar.getContractBalance.useQuery({ contractAddress: contractId! }, {
+    enabled: !!contractId
+  });
+
+  useEffect(() => {
+    console.log('balance changed, Page', balance);
+  }, [balance]);
+
+  useEffect(() => {
+    console.log('contractBalance changed, Page', contractBalance);
+  }, [contractBalance]);
 
   const [onrampSession, setOnrampSession] = useState<any | null>(null);
 
@@ -50,12 +58,6 @@ export default function PasskeyCreation() {
       console.error('Error getting Sep10 auth token:', error);
     }
   }
-
-
-  useEffect(() => {
-    console.log('subWallets:', subWallets);
-    console.log('signers:', signers);
-  }, [subWallets, signers]);
 
   const handleTransfer = async ({ keypair, to, amount }: { keyId?: string, keypair?: Keypair, to: string, amount: number }) => {
     setIsTransfering(true);
@@ -126,85 +128,67 @@ export default function PasskeyCreation() {
     console.log("Removing signer:", key)
   }
 
-  useEffect(() => {
-    if (contractId) {
-      setStatus('success');
-    }
-  }, [contractId]);
-
   return (
-    <Card className="w-[400px]">
-      <CardHeader>
-        <CardTitle>Create a Smart Wallet</CardTitle>
-        <CardDescription>Built on Stellar's passkey technology.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {status === 'idle' && (
-          <Button onClick={handleCreate} className="w-full">
-            Create Passkey
-          </Button>
-        )}
-        {status === 'creating' && (
-          <div className="text-center">
-            <p>Creating passkey...</p>
-            <div className="mt-2 animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-          </div>
-        )}
-        {status === 'success' && (
-          <div className="text-center">
-            <p className="text-green-600 mb-4">Passkey created successfully!</p>
-            <div className="bg-gray-100 p-4 rounded-md">
-              <h3 className="font-semibold mb-2">Account Details:</h3>
-              <p><span className="font-medium">Contract ID:</span> <span className="cursor-pointer" onClick={() => copyToClipboard(String(contractId))}>{shortAddress(contractId)}</span></p>
-              <p><span className="font-medium">Balance:</span> {fromStroops(balance)}</p>
-            </div>
-            { /** Signers */}
-            {signers.map(({ key, kind }) => (
-              <div className="bg-gray-100 mt-1 pl-1 rounded-md flex justify-between gap-0 items-center border-[1px] border-gray-300" key={key}>
-                <div className="flex w-full items-center gap-2">
-                  <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-gray-800" variant={"outline"}>{kind}</Badge>
-                  <p onClick={() => { copyToClipboard(key) }}>{shortAddress(key)}</p>
+    <div className="space-y-6 w-full h-full p-12 pt-0">
+      <AccountSwitcher />
+      <div className="grid gap-6 md:grid-cols-[300px_1fr]">
+        <div className="space-y-6">
+          <Card className="bg-card text-card-foreground">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Company Balance</CardTitle>
+
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex items-center text-xl font-bold text-primary">
+                  <DollarSign className="w-5 h-5 mr-2" />
+                  <span>{fromStroops(contractBalance?.[USDC] ?? "0", 2)} USD</span>
                 </div>
-                <div className="flex items-end gap-0">
-                  <SignersActions handleTransfer={handleTransfer} keyId={keyId || undefined} publicKey={key} handleSep10={getSep10AuthToken} />
+                <div className="flex items-center text-lg font-bold text-primary">
+                  <Euro className="w-5 h-5 mr-2" />
+                  <span>{fromStroops(contractBalance?.[EURC] ?? "0", 2)} EUR</span>
+                </div>
+                <div className="flex items-center text-md font-semibold text-muted-foreground">
+                  <span>{fromStroops(balance)} XLM</span>
                 </div>
               </div>
-            ))}
-            { /** Sub Wallets */}
-            {subWallets && Array.from(subWallets).map(([key, [secret, interval, amount]]) => (
-              <div className="bg-gray-100 mt-1 pl-1 rounded-md flex justify-between gap-0 items-center border-[1px] border-gray-300" key={key}>
-                <div className="flex w-full items-center gap-2">
-                  <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-gray-800" variant={"outline"}>Policy signer</Badge>
-                  <p onClick={() => { copyToClipboard(key) }}>{shortAddress(key)}</p>
-                  <p>{amount}</p>
-                </div>
-                <div className="flex items-end gap-0">
-                  <SignersActions handleTransfer={handleTransfer} secret={secret} />
-                </div>
-              </div>
-            ))}
-            {/** Actions */}
-            <div className="flex justify-center mt-4 gap-2">
-              {contractId && <Button onClick={() => { fundWallet(contractId!) }}>{isFunding ? "Funding..." : "Fund Wallet"}</Button>}
-              <Button onClick={handleAddSigner}>{loading ? "Adding..." : "Add Signer"}</Button>
-              <Button onClick={handleAddSubWallet}>{loading ? "Adding..." : "Add Sub wallet"}</Button>
-              <Button onClick={createOnrampSession}>Create Onramp Session</Button>
-            </div>
-            {onrampSession && (
-              <CryptoElements stripeOnramp={stripeOnrampPromise}>
-                <OnrampElement clientSecret={onrampSession} appearance={{}} />
-              </CryptoElements>
-            )}
-          </div>
-        )}
-        {status === 'error' && (
-          <div className="text-center text-red-600">
-            <p>Error creating passkey:</p>
-            <p>{errorMessage}</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            </CardContent>
+          </Card>
+          <Card>
+
+            <CardHeader>
+              <CardTitle className='flex items-center justify-between text-sm font-medium'>
+                {contractId ? "Smart Wallet Address" : "Connect device"}
+                {contractId && (<div><Badge className='bg-gradient-to-r from-[#4ab3e8] to-[#0081c6] text-gray-800' variant={"outline"}>
+                  {shortAddress(contractId)}
+                </Badge>
+                  <Button
+                    onClick={() => copyToClipboard(contractId)}
+                    variant="ghost" className="p-0 rounded-full hover:scale-105 transition-all duration-100">
+                    <Copy className="h-2 w-2 text-primary" />
+                  </Button>
+                </div>)
+
+                }
+              </CardTitle>
+              {!contractId && keyId && <Button onClick={() => connect(keyId!)} className='text-sm bg-gradient-to-r from-black to-gray-800 text-white'>
+                <ScanFaceIcon className='w-4 h-4 mr-2' />
+                Connect
+              </Button>}
+              {!contractId && <Button onClick={() => create()} className='text-sm bg-gradient-to-r from-black to-gray-800 text-white'>
+                <ScanFaceIcon className='w-4 h-4 mr-2' />
+                Create Smart Wallet
+              </Button>}
+            </CardHeader>
+          </Card>
+          <RecentTransactions />
+        </div>
+        <EmployeeSubaccountList />
+        <div className='flex flex-col gap-2'>
+          {contractId && <Button onClick={() => { fundWallet(contractId!) }}>{isFunding ? "Funding..." : "Fund Wallet"}</Button>}
+        </div>
+      </div>
+    </div>
   )
 }
 

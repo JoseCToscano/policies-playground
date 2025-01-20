@@ -1,52 +1,38 @@
-import Link from "next/link";
-
-import { LatestPost } from "~/app/_components/post";
-import { api, HydrateClient } from "~/trpc/server";
+import { Link } from "lucide-react";
+import { Globe } from "~/app/_components/globe";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { HydrateClient } from "~/trpc/server";
 
 export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
 
-  void api.post.getLatest.prefetch();
 
   return (
     <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
-          </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/usage/first-steps"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">First Steps →</h3>
-              <div className="text-lg">
-                Just the basics - Everything you need to know to set up your
-                database and authentication.
+      <main className="space-y-6  max-w-4xl mx-auto h-full p-12">
+        <Card>
+          <CardContent className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              {/* Left side - Text content */}
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-4xl font-bold tracking-tight">Make money move{' '}
+                    <span className="text-[#4ab3e8]">Freelii</span>
+                  </h1>
+                  <p className="mt-4 text-lg text-muted-foreground">
+                    The digital banking platform for modern businesses.
+                  </p>
+                </div>
               </div>
-            </Link>
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/introduction"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">Documentation →</h3>
-              <div className="text-lg">
-                Learn more about Create T3 App, the libraries it uses, and how
-                to deploy it.
-              </div>
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {hello ? hello.greeting : "Loading tRPC query..."}
-            </p>
-          </div>
 
-          <LatestPost />
-        </div>
+              {/* Right side - Globe */}
+              <div className="relative h-[400px]">
+                <Globe />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
       </main>
     </HydrateClient>
   );

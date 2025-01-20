@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useCallback, useEffect } from "react";
 import { account, fundSigner, native, server, fundPubkey, fundKeypair } from "~/lib/utils";
 import base64url from "base64url";
@@ -20,17 +22,30 @@ export const useSmartWallet = () => {
     const [signers, setSigners] = useState<any[]>([]);
     const [isFunding, setIsFunding] = useState<boolean>(false);
     const [zafeguardPolicy, setZafeguardPolicy] = useState<string | null>(null);
-    const [subWallets, setSubWallets] = useState<Map<string, [string, number, number]> | null>(null);
+    const [subWallets, setSubWallets] = useState<Map<string, { secret: string, email: string, name: string, limitPerTransaction: number }> | null>(null);
+    const [isConnecting, setIsConnecting] = useState<boolean>(false);
 
     const { getParam, setParams } = useSearchParams();
+
+    // Poll for wallet balance every 5 seconds
+    useEffect(() => {
+        if (contractId) {
+            const interval = setInterval(() => {
+                getWalletBalance(contractId);
+            }, 5000);
+            return () => clearInterval(interval);
+        }
+    }, [contractId]);
 
     useEffect(() => {
         const _keyId = getParam('keyId');
         if (_keyId) {
             setKeyId(_keyId);
+            setIsConnecting(true);
             connect(_keyId).then((_contractId) => {
                 queryZafeguardPolicyAddress(_contractId);
                 getSubWallets();
+                setIsConnecting(false);
             });
         } else if (localStorage.hasOwnProperty("zg:subwallets")) {
             localStorage.removeItem("zg:subwallets");
@@ -43,6 +58,7 @@ export const useSmartWallet = () => {
             Promise.all([getWalletSigners(), getWalletBalance(contractId)]);
         }
     }, [contractId]);
+
 
     async function initWallet(contractId_: string) {
         try {
@@ -272,11 +288,11 @@ export const useSmartWallet = () => {
         }
     }
 
-    const getWalletBalance = async (id: string) => {
+    const getWalletBalance = useCallback(async (id: string) => {
         const { result } = await native.balance({ id });
         setBalance(result.toString())
         console.log('balance: ', result.toString());
-    }
+    }, []);
 
     const addSigner_Ed25519 = async (): Promise<{ keypair: Keypair }> => {
         console.log("Adding signer", keyId);
@@ -411,7 +427,7 @@ export const useSmartWallet = () => {
         await getWalletBalance(contractId);
     }
 
-    async function addSubWallet() {
+    async function addSubWallet(email?: string, name?: string, limitPerTransaction?: number) {
         console.log('addSubWallet function called');
         try {
             setLoading(true);
@@ -425,7 +441,7 @@ export const useSmartWallet = () => {
 
             const keypair = Keypair.random();
             const interval = 10;
-            const amount = 100;
+            const amount = (limitPerTransaction ?? 100) * 10_000_000;
 
             console.log('Adding subwallet with:', {
                 smartWallet: contractId,
@@ -454,7 +470,12 @@ export const useSmartWallet = () => {
                     ...JSON.parse(
                         localStorage.getItem("zg:subwallets") || "{}",
                     ),
-                    [keypair.publicKey()]: [keypair.secret(), interval, amount],
+                    [keypair.publicKey()]: {
+                        secret: keypair.secret(),
+                        email,
+                        name,
+                        limitPerTransaction,
+                    },
                 }),
             );
 
@@ -470,19 +491,18 @@ export const useSmartWallet = () => {
 
 
     function getSubWallets() {
-
-        const _subwallets = new Map<string, [string, number, number]>(
+        const _subwallets = new Map<string, { secret: string, email: string, name: string, limitPerTransaction: number }>(
             Object.entries(
-                JSON.parse(localStorage.getItem("zg:subwallets") || "{}") as Record<string, [string, number, number]>
+                JSON.parse(localStorage.getItem("zg:subwallets") || "{}") as Record<string, { secret: string, email: string, name: string, limitPerTransaction: number }>
             )
         );
-
         setSubWallets(_subwallets);
+        return _subwallets;
     }
 
     function getSubWalletSecret(publicKey: string) {
         const subwallets = JSON.parse(localStorage.getItem("zg:subwallets") || "{}");
-        return subwallets[publicKey][0];
+        return subwallets[publicKey].secret;
     }
 
     function getSignerSecret(publicKey: string) {
@@ -491,7 +511,12 @@ export const useSmartWallet = () => {
     }
 
     const getKeypair = (publicKey: string) => {
-        const secret = getSignerSecret(publicKey);
+        console.log('getKeypair', publicKey);
+        let secret = getSignerSecret(publicKey);
+        if (!secret) {
+            secret = getSubWalletSecret(publicKey);
+        }
+        console.log('secret', secret);
         return secret ? Keypair.fromSecret(secret) : null;
     }
 
@@ -528,6 +553,35 @@ export const useSmartWallet = () => {
         }
     }
 
+    const removeSubWallet = async (publicKey: string) => {
+        if (!contract) {
+            toast.error('Contract not initialized');
+            return;
+        }
+        if (!keyId) {
+            toast.error('KeyId not initialized');
+            return;
+        }
+        const at = await contract.remove_wallet({
+            user: Keypair.fromPublicKey(publicKey).rawPublicKey(),
+        });
+
+        const signedTx = await account.sign(at, { keyId });
+
+        const res = await server.send(signedTx);
+
+        console.log(res);
+
+        localStorage.setItem(
+            "zg:subwallets",
+            JSON.stringify(
+                getSubWallets().delete(publicKey)
+            ),
+        );
+
+        getSubWallets();
+    }
+
 
     return {
         create,
@@ -547,5 +601,8 @@ export const useSmartWallet = () => {
         transfer,
         keyId,
         signXDR,
+        getKeypair,
+        isConnecting,
+        removeSubWallet
     }
 }
