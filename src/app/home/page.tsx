@@ -20,6 +20,11 @@ import toast from 'react-hot-toast'
 import { AssembledTransaction } from '@stellar/stellar-sdk/contract'
 import { env } from '~/env'
 import { useSep10 } from '~/hooks/useSep10'
+import { loadStripeOnramp } from '@stripe/crypto';
+import { OnrampElement } from '~/app/_components/stripe-onramp'
+import { CryptoElements } from '~/app/_components/stripe-onramp'
+import axios from 'axios'
+
 
 export default function PasskeyCreation() {
   const [status, setStatus] = useState<'idle' | 'creating' | 'success' | 'error'>('idle')
@@ -30,6 +35,8 @@ export default function PasskeyCreation() {
   const [isTransfering, setIsTransfering] = useState(false);
 
   const { getAuthChallenge, submitAuthChallenge } = useSep10();
+
+  const [onrampSession, setOnrampSession] = useState<any | null>(null);
 
   const getSep10AuthToken = async (publicKey: string) => {
     try {
@@ -55,6 +62,35 @@ export default function PasskeyCreation() {
     await transfer({ keypair, to, amount, keyId });
     setIsTransfering(false);
   }
+
+  const createOnrampSession = async () => {
+    try {
+      const response = await axios.post(
+        'https://api.stripe.com/v1/crypto/onramp_sessions',
+        {
+          "wallet_addresses[stellar]": 'GBLNWW53NIUIN57Y6OI5CKQXB7CODQWQ7ZSZGMQTNGHWMLXGPR3CS3NG',
+          destination_networks: ['stellar'],
+          destination_network: 'stellar',
+          destination_currency: 'usdc',
+        }, // Add any necessary body parameters here
+        {
+          headers: {
+            'Authorization': `Bearer sk_test_51QFHr3FzCRmvgWLQZHMGcRnI9ntVy8R77M8z5OQAwbhNZRBsjcJ99jWeIH0xj4eAKQuRB3COKMfwDqVl220KgJMu00RrmQMoFR`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      console.log('Stripe Onramp Response:', response.data);
+      setOnrampSession(response.data.client_secret);
+      return response.data;
+    } catch (error) {
+      console.error('Error:', error.response ? error.response.data : error.message);
+    }
+  };
+
+
+  const stripeOnrampPromise = loadStripeOnramp(env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 
   const handleCreate = async () => {
@@ -97,7 +133,7 @@ export default function PasskeyCreation() {
   }, [contractId]);
 
   return (
-    <Card className="w-[350px]">
+    <Card className="w-[400px]">
       <CardHeader>
         <CardTitle>Create a Smart Wallet</CardTitle>
         <CardDescription>Built on Stellar's passkey technology.</CardDescription>
@@ -152,7 +188,13 @@ export default function PasskeyCreation() {
               {contractId && <Button onClick={() => { fundWallet(contractId!) }}>{isFunding ? "Funding..." : "Fund Wallet"}</Button>}
               <Button onClick={handleAddSigner}>{loading ? "Adding..." : "Add Signer"}</Button>
               <Button onClick={handleAddSubWallet}>{loading ? "Adding..." : "Add Sub wallet"}</Button>
+              <Button onClick={createOnrampSession}>Create Onramp Session</Button>
             </div>
+            {onrampSession && (
+              <CryptoElements stripeOnramp={stripeOnrampPromise}>
+                <OnrampElement clientSecret={onrampSession} appearance={{}} />
+              </CryptoElements>
+            )}
           </div>
         )}
         {status === 'error' && (
