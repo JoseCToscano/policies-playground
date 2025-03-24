@@ -1,192 +1,190 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import { Badge } from '~/components/ui/badge'
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { useSmartWallet } from '~/hooks/useSmartWallet'
 import { account, copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
-import { Copy, DollarSign, Euro, ScanFaceIcon } from "lucide-react"
-import { SignersActions } from '../_components/signers-actions'
-import { Keypair } from '@stellar/stellar-sdk'
-import { env } from '~/env'
-import { useSep10 } from '~/hooks/useSep10'
-import { loadStripeOnramp } from '@stripe/crypto';
-import { OnrampElement } from '~/app/_components/stripe-onramp'
-import { CryptoElements } from '~/app/_components/stripe-onramp'
-import axios from 'axios'
-import { RecentTransactions } from "~/components/recent-transactions";
-import { EmployeeSubaccountList } from "~/components/employee-subaccount-list";
-import { AccountSwitcher } from '~/app/_components/account-switcher'
+import { Copy, DollarSign, Euro, Plus, Settings, Shield } from "lucide-react"
 import { api } from '~/trpc/react'
+import { cn } from '~/lib/utils'
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
-export default function PasskeyCreation() {
-  const [status, setStatus] = useState<'idle' | 'creating' | 'success' | 'error'>('idle')
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const { create, connect, getWalletSigners, signXDR, addSubWallet, transfer, subWallets, removeSubWallet, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, signers, isFunding, getWalletBalance, } = useSmartWallet();
+const PolicyCard = ({ title, description, active = false, onClick }: { title: string, description: string, active?: boolean, onClick?: () => void }) => (
+  <motion.div
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    className="cursor-pointer"
+    onClick={onClick}
+  >
+    <Card className={cn("relative overflow-hidden", active && "border-primary")}>
+      {active && (
+        <div className="absolute top-0 right-0 p-2">
+          <Badge variant="default">Active</Badge>
+        </div>
+      )}
+      <CardHeader>
+        <CardTitle className="text-lg">{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+    </Card>
+  </motion.div>
+)
 
-  const [isTransfering, setIsTransfering] = useState(false);
-
-  const { getAuthChallenge, submitAuthChallenge } = useSep10();
+export default function PolicyBuilder() {
+  const [selectedPolicy, setSelectedPolicy] = useState<string | null>(null)
+  const { create, connect, contractId, keyId } = useSmartWallet();
 
   const { data: contractBalance } = api.stellar.getContractBalance.useQuery({ contractAddress: contractId! }, {
     enabled: !!contractId
   });
 
-  useEffect(() => {
-    console.log('balance changed, Page', balance);
-  }, [balance]);
-
-  useEffect(() => {
-    console.log('contractBalance changed, Page', contractBalance);
-  }, [contractBalance]);
-
-  const [onrampSession, setOnrampSession] = useState<any | null>(null);
-
-  const getSep10AuthToken = async (publicKey: string) => {
-    try {
-      const challenge = await getAuthChallenge({ publicKey });
-      console.log('challenge:', challenge, publicKey, account.wallet?.options, account.wallet?.spec);
-      const signedTx = await signXDR(challenge.transaction, 'Ed25519', publicKey);
-      console.log('signedTx for challenge:', signedTx, typeof signedTx);
-      const authToken = await submitAuthChallenge({ xdr: typeof signedTx === 'string' ? signedTx : signedTx.toXDR() });
-      console.log('authToken:', authToken);
-    } catch (error) {
-      console.error('Error getting Sep10 auth token:', error);
-    }
-  }
-
-  const handleTransfer = async ({ keypair, to, amount }: { keyId?: string, keypair?: Keypair, to: string, amount: number }) => {
-    setIsTransfering(true);
-    await transfer({ keypair, to, amount, keyId });
-    setIsTransfering(false);
-  }
-
-  const createOnrampSession = async () => {
-    try {
-      const response = await axios.post(
-        'https://api.stripe.com/v1/crypto/onramp_sessions',
-        {
-          "wallet_addresses[stellar]": 'GBLNWW53NIUIN57Y6OI5CKQXB7CODQWQ7ZSZGMQTNGHWMLXGPR3CS3NG',
-          destination_networks: ['stellar'],
-          destination_network: 'stellar',
-          destination_currency: 'usdc',
-        }, // Add any necessary body parameters here
-        {
-          headers: {
-            'Authorization': `Bearer sk_test_51QFHr3FzCRmvgWLQZHMGcRnI9ntVy8R77M8z5OQAwbhNZRBsjcJ99jWeIH0xj4eAKQuRB3COKMfwDqVl220KgJMu00RrmQMoFR`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-      );
-
-      console.log('Stripe Onramp Response:', response.data);
-      setOnrampSession(response.data.client_secret);
-      return response.data;
-    } catch (error) {
-      console.error('Error:', error.response ? error.response.data : error.message);
-    }
-  };
-
-
-  const stripeOnrampPromise = loadStripeOnramp(env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
-
-
-  const handleCreate = async () => {
-    setStatus('creating');
-    try {
-      await create();
-      setStatus('success');
-    } catch (error) {
-      setStatus('error');
-      setErrorMessage((error as Error)?.message || 'Unknown error');
-    }
-  }
-
-  const handleAddSigner = async () => {
-    console.log("Adding signer ...");
-    const { keypair } = await addSigner_Ed25519();
-    if (keypair) {
-      console.log("Signer added:", keypair.publicKey());
-    } else {
-      console.error("Failed to add signer");
-    }
-    await getWalletSigners();
-  }
-
-  const handleAddSubWallet = async () => {
-    console.log("Adding subwallet ...");
-    await addSubWallet();
-    await getWalletSigners();
-  }
-
-  const handleRemoveSigner = async (key: string) => {
-    // TODO: Implement remove signer functionality
-    console.log("Removing signer:", key)
-  }
+  const policies = [
+    {
+      id: 'time-based',
+      title: 'Time-Based Limits',
+      description: 'Set spending limits based on time intervals (daily, weekly, monthly)',
+    },
+    {
+      id: 'amount-based',
+      title: 'Amount-Based Limits',
+      description: 'Set maximum transaction amounts for each payment',
+    },
+    {
+      id: 'domain-based',
+      title: 'Domain Restrictions',
+      description: 'Limit transactions to specific domains or merchants',
+    },
+    {
+      id: 'multi-sig',
+      title: 'Multi-Signature',
+      description: 'Require multiple approvals for transactions',
+    },
+  ]
 
   return (
-    <div className="space-y-6 w-full h-full p-12 pt-0">
-      <AccountSwitcher />
-      <div className="grid gap-6 md:grid-cols-[300px_1fr]">
-        <div className="space-y-6">
-          <Card className="bg-card text-card-foreground">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Company Balance</CardTitle>
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
+      <div className="container mx-auto p-8">
+        {/* Header Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-12"
+        >
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+            Policy Builder
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Create and manage smart wallet policies with granular control
+          </p>
+        </motion.div>
 
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center text-xl font-bold text-primary">
-                  <DollarSign className="w-5 h-5 mr-2" />
-                  <span>{fromStroops(contractBalance?.[USDC] ?? "0", 2)} USD</span>
-                </div>
-                <div className="flex items-center text-lg font-bold text-primary">
-                  <Euro className="w-5 h-5 mr-2" />
-                  <span>{fromStroops(contractBalance?.[EURC] ?? "0", 2)} EUR</span>
-                </div>
-                <div className="flex items-center text-md font-semibold text-muted-foreground">
-                  <span>{fromStroops(balance)} XLM</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-
-            <CardHeader>
-              <CardTitle className='flex items-center justify-between text-sm font-medium'>
-                {contractId ? "Smart Wallet Address" : "Connect device"}
-                {contractId && (<div><Badge className='bg-gradient-to-r from-[#4ab3e8] to-[#0081c6] text-gray-800' variant={"outline"}>
-                  {shortAddress(contractId)}
-                </Badge>
-                  <Button
-                    onClick={() => copyToClipboard(contractId)}
-                    variant="ghost" className="p-0 rounded-full hover:scale-105 transition-all duration-100">
-                    <Copy className="h-2 w-2 text-primary" />
+        {/* Wallet Connection Section */}
+        {!contractId && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-col items-center gap-4 mb-12"
+          >
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Get Started</CardTitle>
+                <CardDescription>Create or connect your smart wallet to start building policies</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                <Button onClick={() => create()} className="w-full">
+                  <Shield className="w-4 h-4 mr-2" />
+                  Create Smart Wallet
+                </Button>
+                {keyId && (
+                  <Button onClick={() => connect(keyId)} variant="outline" className="w-full">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Connect Existing Wallet
                   </Button>
-                </div>)
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
-                }
-              </CardTitle>
-              {!contractId && keyId && <Button onClick={() => connect(keyId!)} className='text-sm bg-gradient-to-r from-black to-gray-800 text-white'>
-                <ScanFaceIcon className='w-4 h-4 mr-2' />
-                Connect
-              </Button>}
-              {!contractId && <Button onClick={() => create()} className='text-sm bg-gradient-to-r from-black to-gray-800 text-white'>
-                <ScanFaceIcon className='w-4 h-4 mr-2' />
-                Create Smart Wallet
-              </Button>}
-            </CardHeader>
-          </Card>
-          <RecentTransactions />
-        </div>
-        <EmployeeSubaccountList />
-        <div className='flex flex-col gap-2'>
-          {contractId && <Button onClick={() => { fundWallet(contractId!) }}>{isFunding ? "Funding..." : "Fund Wallet"}</Button>}
-        </div>
+        {/* Connected Wallet Info */}
+        {contractId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="grid gap-6 md:grid-cols-[300px_1fr] mb-12"
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between text-sm font-medium">
+                  Smart Wallet
+                  <Badge className='bg-gradient-to-r from-[#4ab3e8] to-[#0081c6] text-background'>
+                    {shortAddress(contractId)}
+                    <Button
+                      onClick={() => copyToClipboard(contractId)}
+                      variant="ghost"
+                      className="ml-2 p-0 h-4 hover:bg-transparent"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex items-center text-xl font-bold">
+                    <DollarSign className="w-5 h-5 mr-2" />
+                    <span>{fromStroops(contractBalance?.[USDC] ?? "0", 2)} USD</span>
+                  </div>
+                  <div className="flex items-center text-lg font-bold">
+                    <Euro className="w-5 h-5 mr-2" />
+                    <span>{fromStroops(contractBalance?.[EURC] ?? "0", 2)} EUR</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Policy Grid */}
+        {contractId && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {policies.map((policy) => (
+                <PolicyCard
+                  key={policy.id}
+                  title={policy.title}
+                  description={policy.description}
+                  active={selectedPolicy === policy.id}
+                  onClick={() => setSelectedPolicy(policy.id)}
+                />
+              ))}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="cursor-pointer"
+              >
+                <Card className="border-dashed flex items-center justify-center h-full">
+                  <CardContent className="flex flex-col items-center py-6">
+                    <Plus className="w-8 h-8 text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground">Create Custom Policy</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   )
