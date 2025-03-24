@@ -67,8 +67,18 @@ export default function PolicyBuilder() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
-      <div className="container mx-auto p-8">
+    <div className="min-h-screen relative bg-background overflow-hidden">
+      {/* Grid Background */}
+      <div className="absolute inset-0 bg-grid-pattern" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/20" />
+
+      {/* Gradient Orbs */}
+      <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-primary/20 blur-[100px] animate-pulse" />
+      <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full bg-primary/10 blur-[100px] animate-pulse"
+        style={{ animationDelay: '-2s' }}
+      />
+
+      <div className="container mx-auto p-8 relative">
         {/* Header Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -186,6 +196,9 @@ export default function PolicyBuilder() {
           </motion.div>
         )}
       </div>
+
+      {/* Glass effect overlay */}
+      <div className="pointer-events-none fixed inset-0 bg-background/10 backdrop-blur-[1px]" />
     </div>
   )
 }
