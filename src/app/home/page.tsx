@@ -7,13 +7,30 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { useSmartWallet } from '~/hooks/useSmartWallet'
 import { account, copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
-import { Copy, DollarSign, Euro, KeyRound, Plus, Settings, Shield, UserPlus } from "lucide-react"
+import { Copy, DollarSign, Euro, KeyRound, Plus, Settings, Shield, UserPlus, Activity, Wallet } from "lucide-react"
 import { api } from '~/trpc/react'
 import { cn } from '~/lib/utils'
 import { toast, Toaster } from 'react-hot-toast'
+import { ScrollArea } from "~/components/ui/scroll-area"
+import { SignersActions } from '~/app/_components/signers-actions'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
+import { Input } from "~/components/ui/input"
+import { Label } from "~/components/ui/label"
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
+
+interface ContractEvent {
+  type: string;
+  timestamp: number;
+  details: Record<string, any>;
+}
+
+interface SubwalletData {
+  name: string;
+  email: string;
+  limitPerTransaction: number;
+}
 
 const PolicyCard = ({ title, description, active = false, onClick }: { title: string, description: string, active?: boolean, onClick?: () => void }) => (
   <motion.div
@@ -38,20 +55,68 @@ const PolicyCard = ({ title, description, active = false, onClick }: { title: st
 
 export default function PolicyBuilder() {
   const [selectedPolicy, setSelectedPolicy] = useState<string | null>(null)
-  const { create, connect, contractId, keyId, addSigner_Ed25519 } = useSmartWallet();
+  const [events, setEvents] = useState<ContractEvent[]>([])
+  const { create, connect, contractId, keyId, addSigner_Ed25519, transfer, addSubWallet } = useSmartWallet();
+  const [selectedSigner, setSelectedSigner] = useState<string>();
+  const [subwalletDialogOpen, setSubwalletDialogOpen] = useState(false);
+  const [newSubwallet, setNewSubwallet] = useState<SubwalletData>({
+    name: '',
+    email: '',
+    limitPerTransaction: 0
+  });
 
   const { data: contractBalance } = api.stellar.getContractBalance.useQuery({ contractAddress: contractId! }, {
     enabled: !!contractId
   });
 
+  const addEvent = (type: string, details: Record<string, any>) => {
+    setEvents(prev => {
+      const newEvents = [
+        { type, timestamp: Date.now(), details },
+        ...prev,
+      ].slice(0, 50); // Keep only last 50 events
+      return newEvents;
+    });
+  };
+
   const handleAddSigner = async () => {
     try {
-      const { keypair } = await addSigner_Ed25519();
-      if (keypair) {
-        toast.success("Signer added successfully");
-      }
+      await addSigner_Ed25519();
+      toast.success("Signer added successfully!");
+      addEvent("signer_added", { timestamp: Date.now() });
     } catch (error) {
+      console.error("Error adding signer:", error);
       toast.error("Failed to add signer");
+      addEvent("signer_error", { error: String(error) });
+    }
+  };
+
+  const handleAddSubwallet = async () => {
+    try {
+      if (!newSubwallet.name || !newSubwallet.email || !newSubwallet.limitPerTransaction) {
+        toast.error("Please fill in all fields");
+        return;
+      }
+
+      await addSubWallet(newSubwallet);
+
+      toast.success("Subwallet added successfully!");
+      addEvent("subwallet_added", {
+        name: newSubwallet.name,
+        email: newSubwallet.email,
+        limit: newSubwallet.limitPerTransaction
+      });
+
+      setSubwalletDialogOpen(false);
+      setNewSubwallet({
+        name: '',
+        email: '',
+        limitPerTransaction: 0
+      });
+    } catch (error) {
+      console.error("Error adding subwallet:", error);
+      toast.error("Failed to add subwallet");
+      addEvent("subwallet_error", { error: String(error) });
     }
   };
 
@@ -191,6 +256,22 @@ export default function PolicyBuilder() {
                   Add Signer
                 </Button>
               </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <Button
+                  onClick={() => setSubwalletDialogOpen(true)}
+                  variant="outline"
+                  className="w-full group relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5 group-hover:opacity-80 opacity-0 transition-opacity duration-300" />
+                  <Wallet className="w-4 h-4 mr-2" />
+                  Add Subwallet
+                </Button>
+              </motion.div>
             </div>
           </motion.div>
         )}
@@ -228,6 +309,53 @@ export default function PolicyBuilder() {
           </motion.div>
         )}
       </div>
+
+      {/* Add Subwallet Dialog */}
+      <Dialog open={subwalletDialogOpen} onOpenChange={setSubwalletDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Subwallet</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={newSubwallet.name}
+                onChange={(e) => setNewSubwallet(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Enter subwallet name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={newSubwallet.email}
+                onChange={(e) => setNewSubwallet(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="Enter email address"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="limit">Transaction Limit (XLM)</Label>
+              <Input
+                id="limit"
+                type="number"
+                min="1"
+                value={newSubwallet.limitPerTransaction}
+                onChange={(e) => setNewSubwallet(prev => ({ ...prev, limitPerTransaction: Number(e.target.value) }))}
+                placeholder="Enter transaction limit"
+              />
+            </div>
+            <Button
+              onClick={handleAddSubwallet}
+              className="w-full"
+            >
+              Create Subwallet
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

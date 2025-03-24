@@ -12,6 +12,12 @@ import toast from "react-hot-toast";
 import { AssembledTransaction } from "@stellar/stellar-sdk/contract";
 const ADMIN_KEY = "AAAAEAAAAAEAAAABAAAAEQAAAAEAAAAA"; // TODO very rough until we're actually parsing the limits object
 
+interface SubwalletData {
+    name: string;
+    email: string;
+    limitPerTransaction: number;
+}
+
 export const useSmartWallet = () => {
     const [keyId, setKeyId] = useState<string | null>(null);
     const [contractId, setContractId] = useState<string | null>(null);
@@ -427,7 +433,7 @@ export const useSmartWallet = () => {
         await getWalletBalance(contractId);
     }
 
-    async function addSubWallet(email?: string, name?: string, limitPerTransaction?: number) {
+    const addSubWallet = async (data: SubwalletData) => {
         console.log('addSubWallet function called');
         try {
             setLoading(true);
@@ -441,7 +447,7 @@ export const useSmartWallet = () => {
 
             const keypair = Keypair.random();
             const interval = 10;
-            const amount = (limitPerTransaction ?? 100) * 10_000_000;
+            const amount = (data.limitPerTransaction ?? 100) * 10_000_000;
 
             console.log('Adding subwallet with:', {
                 smartWallet: contractId,
@@ -472,9 +478,9 @@ export const useSmartWallet = () => {
                     ),
                     [keypair.publicKey()]: {
                         secret: keypair.secret(),
-                        email,
-                        name,
-                        limitPerTransaction,
+                        email: data.email,
+                        name: data.name,
+                        limitPerTransaction: data.limitPerTransaction,
                     },
                 }),
             );
