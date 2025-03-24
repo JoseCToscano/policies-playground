@@ -58,6 +58,7 @@ export const stellarRouter = createTRPCRouter({
       const sorobanServer = new rpc.Server("https://soroban-testnet.stellar.org");
       const passphrase = "Test SDF Network ; September 2015";
       const indexedSAC = [
+        Asset.native(),
         new Asset("USDC", "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"),
         new Asset("EURC", "GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO")
       ];
@@ -65,7 +66,7 @@ export const stellarRouter = createTRPCRouter({
       const balancePromises = indexedSAC.map(async sac => {
         const balance = await sorobanServer.getSACBalance(input.contractAddress, sac, passphrase);
         return {
-          key: `${sac.code}-${sac.issuer}`,
+          key: sac.isNative() ? "XLM" : `${sac.code}-${sac.issuer}`,
           balance: balance?.balanceEntry?.amount || "0"
         };
       });

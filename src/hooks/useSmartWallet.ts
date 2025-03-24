@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { account, fundSigner, native, server, fundPubkey, fundKeypair } from "~/lib/utils";
-import base64url from "base64url";
 import { Address, hash, Keypair, Operation, scValToNative, StrKey, rpc as SorobanRpc, TransactionBuilder, xdr, Transaction } from "@stellar/stellar-sdk";
 import { SignerStore } from "passkey-kit";
 import { useSearchParams } from "./useSearchParams";
@@ -389,11 +388,12 @@ export const useSmartWallet = () => {
     }, [getWalletSigners]);
 
     async function transfer({ keypair, to, amount, keyId }: { keyId?: string | null, keypair?: Keypair, to: string, amount: number }) {
+        console.log('transferring', { keypair, to, amount, keyId, amount_as_bigint: BigInt(amount) });
         if (!contractId) return;
 
         const at = await native.transfer({
             from: contractId,
-            to: fundPubkey,
+            to,
             amount: BigInt(amount),
         });
 
@@ -419,7 +419,7 @@ export const useSmartWallet = () => {
 
             // Extract meaningful error message
             let errorMessage = "Transaction failed: ";
-            if ((error?.error as string).includes("InvalidAction")) {
+            if ((error?.error as string)?.includes("InvalidAction")) {
                 errorMessage += 'Invalid action'
             } else if (error.message) {
                 errorMessage += error.message;
@@ -450,9 +450,10 @@ export const useSmartWallet = () => {
             const amount = (data.limitPerTransaction ?? 100) * 10_000_000;
 
             console.log('Adding subwallet with:', {
-                smartWallet: contractId,
-                zafeguardPolicy,
-                keyId
+                user: keypair.rawPublicKey(),
+                sac: env.NEXT_PUBLIC_NATIVE_CONTRACT_ID,
+                interval,
+                amount: BigInt(amount),
             });
 
             const at = await contract.add_wallet({
@@ -560,17 +561,22 @@ export const useSmartWallet = () => {
     }
 
     const removeSubWallet = async (publicKey: string) => {
+        console.log('Removing subwallet', publicKey);
         if (!contract) {
+            console.log('Contract not initialized');
             toast.error('Contract not initialized');
             return;
         }
         if (!keyId) {
+            console.log('KeyId not initialized');
             toast.error('KeyId not initialized');
             return;
         }
         const at = await contract.remove_wallet({
             user: Keypair.fromPublicKey(publicKey).rawPublicKey(),
         });
+
+        console.log('Removing subwallet', at);
 
         const signedTx = await account.sign(at, { keyId });
 
