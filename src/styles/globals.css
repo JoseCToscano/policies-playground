@@ -110,10 +110,11 @@
 
 @layer utilities {
   .bg-grid-pattern {
-    background-size: 50px 50px;
+    background-size: 30px 30px;
     background-image: 
-      linear-gradient(to right, rgb(var(--border) / 0.05) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(var(--border) / 0.05) 1px, transparent 1px);
+      linear-gradient(to right, rgb(var(--border) / 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--border) / 0.07) 1px, transparent 1px);
+    filter: blur(0.5px);
   }
 
   .animate-pulse {
@@ -122,10 +123,10 @@
 
   @keyframes pulse {
     0%, 100% {
-      opacity: 1;
+      opacity: 0.8;
     }
     50% {
-      opacity: .5;
+      opacity: 0.4;
     }
   }
 }

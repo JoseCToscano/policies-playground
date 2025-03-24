@@ -69,12 +69,12 @@ export default function PolicyBuilder() {
   return (
     <div className="min-h-screen relative bg-background overflow-hidden">
       {/* Grid Background */}
-      <div className="absolute inset-0 bg-grid-pattern" />
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/20" />
+      <div className="absolute inset-0 bg-grid-pattern opacity-70" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent backdrop-blur-[2px]" />
 
       {/* Gradient Orbs */}
-      <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-primary/20 blur-[100px] animate-pulse" />
-      <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full bg-primary/10 blur-[100px] animate-pulse"
+      <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-primary/20 blur-[100px] animate-pulse mix-blend-soft-light" />
+      <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full bg-primary/10 blur-[100px] animate-pulse mix-blend-soft-light"
         style={{ animationDelay: '-2s' }}
       />
 
@@ -196,9 +196,6 @@ export default function PolicyBuilder() {
           </motion.div>
         )}
       </div>
-
-      {/* Glass effect overlay */}
-      <div className="pointer-events-none fixed inset-0 bg-background/10 backdrop-blur-[1px]" />
     </div>
   )
 }
