@@ -7,9 +7,10 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { useSmartWallet } from '~/hooks/useSmartWallet'
 import { account, copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
-import { Copy, DollarSign, Euro, Plus, Settings, Shield } from "lucide-react"
+import { Copy, DollarSign, Euro, KeyRound, Plus, Settings, Shield, UserPlus } from "lucide-react"
 import { api } from '~/trpc/react'
 import { cn } from '~/lib/utils'
+import { toast, Toaster } from 'react-hot-toast'
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
@@ -37,11 +38,22 @@ const PolicyCard = ({ title, description, active = false, onClick }: { title: st
 
 export default function PolicyBuilder() {
   const [selectedPolicy, setSelectedPolicy] = useState<string | null>(null)
-  const { create, connect, contractId, keyId } = useSmartWallet();
+  const { create, connect, contractId, keyId, addSigner_Ed25519 } = useSmartWallet();
 
   const { data: contractBalance } = api.stellar.getContractBalance.useQuery({ contractAddress: contractId! }, {
     enabled: !!contractId
   });
+
+  const handleAddSigner = async () => {
+    try {
+      const { keypair } = await addSigner_Ed25519();
+      if (keypair) {
+        toast.success("Signer added successfully");
+      }
+    } catch (error) {
+      toast.error("Failed to add signer");
+    }
+  };
 
   const policies = [
     {
@@ -68,6 +80,8 @@ export default function PolicyBuilder() {
 
   return (
     <div className="min-h-screen relative bg-background overflow-hidden">
+      <Toaster position="top-right" />
+
       {/* Grid Background */}
       <div className="absolute inset-0 bg-grid-pattern opacity-70" />
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent backdrop-blur-[2px]" />
@@ -131,35 +145,53 @@ export default function PolicyBuilder() {
             transition={{ delay: 0.3 }}
             className="grid gap-6 md:grid-cols-[300px_1fr] mb-12"
           >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between text-sm font-medium">
-                  Smart Wallet
-                  <Badge className='bg-gradient-to-r from-[#4ab3e8] to-[#0081c6] text-background'>
-                    {shortAddress(contractId)}
-                    <Button
-                      onClick={() => copyToClipboard(contractId)}
-                      variant="ghost"
-                      className="ml-2 p-0 h-4 hover:bg-transparent"
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center text-xl font-bold">
-                    <DollarSign className="w-5 h-5 mr-2" />
-                    <span>{fromStroops(contractBalance?.[USDC] ?? "0", 2)} USD</span>
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between text-sm font-medium">
+                    Smart Wallet
+                    <Badge className='bg-gradient-to-r from-[#4ab3e8] to-[#0081c6] text-background'>
+                      {shortAddress(contractId)}
+                      <Button
+                        onClick={() => copyToClipboard(contractId)}
+                        variant="ghost"
+                        className="ml-2 p-0 h-4 hover:bg-transparent"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center text-xl font-bold">
+                      <DollarSign className="w-5 h-5 mr-2" />
+                      <span>{fromStroops(contractBalance?.[USDC] ?? "0", 2)} USD</span>
+                    </div>
+                    <div className="flex items-center text-lg font-bold">
+                      <Euro className="w-5 h-5 mr-2" />
+                      <span>{fromStroops(contractBalance?.[EURC] ?? "0", 2)} EUR</span>
+                    </div>
                   </div>
-                  <div className="flex items-center text-lg font-bold">
-                    <Euro className="w-5 h-5 mr-2" />
-                    <span>{fromStroops(contractBalance?.[EURC] ?? "0", 2)} EUR</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <Button
+                  onClick={handleAddSigner}
+                  variant="outline"
+                  className="w-full group relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5 group-hover:opacity-80 opacity-0 transition-opacity duration-300" />
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add Signer
+                </Button>
+              </motion.div>
+            </div>
           </motion.div>
         )}
 
