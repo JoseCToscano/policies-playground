@@ -296,9 +296,9 @@ const popularContracts: PopularContract[] = [
     icon: <EuroIcon className="h-3.5 w-3.5" />
   },
   {
-    name: "Blend Token",
-    description: "Blend Protocol Token",
-    address: "BLEND-CCHZKMVGSP3N4YEHD4EFHA6UKND5NDVP4COTAFENAFMPRNTEC2U2ST5F",
+    name: "Blend",
+    description: "Blend Protocol",
+    address: "CCHZKMVGSP3N4YEHD4EFHA6UKND5NDVP4COTAFENAFMPRNTEC2U2ST5F",
     icon: <Combine className="h-3.5 w-3.5" />
   }
 ];

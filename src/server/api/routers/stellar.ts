@@ -16,6 +16,12 @@ function parseXdrType(type: xdr.ScSpecTypeDef): string {
   // Get the switch case (type name)
   const typeName = type.switch().name;
 
+  // Handle vector types recursively
+  if (typeName === 'scSpecTypeVec') {
+    const elementType = type.vec().elementType();
+    return `vec<${parseXdrType(elementType)}>`;
+  }
+
   // Map XDR type names to readable type names
   switch (typeName) {
     case 'scSpecTypeU32':
@@ -48,6 +54,17 @@ function parseXdrType(type: xdr.ScSpecTypeDef): string {
       return 'symbol';
     case 'scSpecTypeAddress':
       return 'address';
+    case 'scSpecTypeMap':
+      const keyType = parseXdrType(type.map().keyType());
+      const valueType = parseXdrType(type.map().valueType());
+      return `map<${keyType},${valueType}>`;
+    case 'scSpecTypeTuple':
+      const valueTypes = type.tuple().valueTypes().map(parseXdrType);
+      return `tuple<${valueTypes.join(',')}>`;
+    case 'scSpecTypeResult':
+      const okType = type.result().okType() ? parseXdrType(type.result().okType()) : 'void';
+      const errorType = type.result().errorType() ? parseXdrType(type.result().errorType()) : 'void';
+      return `result<${okType},${errorType}>`;
     default:
       return typeName.replace('scSpecType', '').toLowerCase();
   }
@@ -171,6 +188,8 @@ export const stellarRouter = createTRPCRouter({
             name: decodeBuffer(param.name()),
             type: parseXdrType(param.type())
           }));
+
+
 
           console.log(`Function: ${name}`);
           console.log('Parameters:', parameters);
