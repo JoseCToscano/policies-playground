@@ -58,7 +58,7 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { cn } from '~/lib/utils'
-import { type RouterOutputs } from "~/utils/api";
+import { type RouterOutputs } from "~/trpc/react";
 import {
   Tooltip,
   TooltipContent,
@@ -577,130 +577,217 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
 
               {/* Right Column: Function Parameters & Execution */}
               <div className="space-y-4">
-                {selectedFunction && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-xs font-medium">Function Parameters</Label>
-                        <p className="text-xs text-muted-foreground">
-                          {metadata.functions
-                            .find((fn: any) => fn.name === selectedFunction)
-                            ?.parameters.length === 0
-                            ? "This function doesn't require any parameters"
-                            : `Enter parameters for ${selectedFunction}`}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={isReadOnlyFunction(selectedFunction) ? "secondary" : "outline"}
-                        className={cn(
-                          "text-xs",
-                          isReadOnlyFunction(selectedFunction)
-                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                            : "bg-orange-50 text-orange-700 border-orange-200"
-                        )}
-                      >
-                        {isReadOnlyFunction(selectedFunction) ? "Read-Only" : "Write"}
-                      </Badge>
-                    </div>
+                <div className="border rounded-md">
+                  <Tabs defaultValue="functions" className="w-full">
+                    <TabsList className="w-full grid grid-cols-3">
+                      <TabsTrigger value="functions">Functions</TabsTrigger>
+                      <TabsTrigger value="enums">Enums</TabsTrigger>
+                      <TabsTrigger value="unions">Unions & Structs</TabsTrigger>
+                    </TabsList>
 
-                    <div className="space-y-3">
-                      {metadata.functions
-                        .find((fn: any) => fn.name === selectedFunction)
-                        ?.parameters.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-6 px-4 border rounded-md bg-gray-50/50">
-                          <Terminal className="h-8 w-8 text-gray-400 mb-3" />
-                          <p className="text-sm text-center text-muted-foreground mb-1">
-                            Ready to query {selectedFunction}()
-                          </p>
-                          <p className="text-xs text-center text-muted-foreground">
-                            This is a direct call that returns {selectedFunction === 'decimals' ? 'a number' : 'a string'}
-                          </p>
-                        </div>
-                      ) : (
-                        metadata.functions
-                          .find((fn: any) => fn.name === selectedFunction)
-                          ?.parameters.map((param: any) => (
-                            <div key={param.name} className="space-y-1.5">
-                              <Label className="text-xs flex items-center justify-between">
-                                <span className="font-mono">{param.name}</span>
-                                <Badge
-                                  variant="outline"
-                                  className={cn(
-                                    "font-mono text-[10px]",
-                                    param.type === 'address' && "bg-purple-50 border-purple-200 text-purple-700",
-                                    param.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
-                                    param.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
-                                  )}
-                                >
-                                  {param.type}
-                                </Badge>
-                              </Label>
-                              <div className="relative">
-                                <Input
-                                  value={functionParams[param.name] || ""}
-                                  onChange={(e) => {
-                                    const value = e.target.value;
-                                    setFunctionParams((prev) => ({
-                                      ...prev,
-                                      [param.name]: value,
-                                    }));
-
-                                    // Validate input
-                                    if (!validateParam(value, param.type)) {
-                                      setParamErrors((prev) => ({
-                                        ...prev,
-                                        [param.name]: `Invalid ${param.type} value`,
-                                      }));
-                                    } else {
-                                      setParamErrors((prev) => {
-                                        const { [param.name]: _, ...rest } = prev;
-                                        return rest;
-                                      });
-                                    }
-                                  }}
-                                  placeholder={getPlaceholder(param.type)}
-                                  className={cn(
-                                    "font-mono text-sm h-9",
-                                    paramErrors[param.name] && "border-red-500"
-                                  )}
-                                />
-                                {paramErrors[param.name] && (
-                                  <span className="absolute -bottom-4 left-0 text-xs text-red-500">
-                                    {paramErrors[param.name]}
-                                  </span>
-                                )}
-                              </div>
+                    <TabsContent value="functions" className="p-4 space-y-4">
+                      {selectedFunction ? (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label className="text-xs font-medium">Function Parameters</Label>
+                              <p className="text-xs text-muted-foreground">
+                                {metadata.functions
+                                  .find((fn: any) => fn.name === selectedFunction)
+                                  ?.parameters.length === 0
+                                  ? "This function doesn't require any parameters"
+                                  : `Enter parameters for ${selectedFunction}`}
+                              </p>
                             </div>
-                          ))
+                            <Badge
+                              variant={isReadOnlyFunction(selectedFunction) ? "secondary" : "outline"}
+                              className={cn(
+                                "text-xs",
+                                isReadOnlyFunction(selectedFunction)
+                                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                                  : "bg-orange-50 text-orange-700 border-orange-200"
+                              )}
+                            >
+                              {isReadOnlyFunction(selectedFunction) ? "Read-Only" : "Write"}
+                            </Badge>
+                          </div>
+
+                          <div className="space-y-3">
+                            {metadata.functions
+                              .find((fn: any) => fn.name === selectedFunction)
+                              ?.parameters.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center py-6 px-4 border rounded-md bg-gray-50/50">
+                                <Terminal className="h-8 w-8 text-gray-400 mb-3" />
+                                <p className="text-sm text-center text-muted-foreground mb-1">
+                                  Ready to query {selectedFunction}()
+                                </p>
+                                <p className="text-xs text-center text-muted-foreground">
+                                  This is a direct call that returns {selectedFunction === 'decimals' ? 'a number' : 'a string'}
+                                </p>
+                              </div>
+                            ) : (
+                              metadata.functions
+                                .find((fn: any) => fn.name === selectedFunction)
+                                ?.parameters.map((param: any) => (
+                                  <div key={param.name} className="space-y-1.5">
+                                    <Label className="text-xs flex items-center justify-between">
+                                      <span className="font-mono">{param.name}</span>
+                                      <Badge
+                                        variant="outline"
+                                        className={cn(
+                                          "font-mono text-[10px]",
+                                          param.type === 'address' && "bg-purple-50 border-purple-200 text-purple-700",
+                                          param.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
+                                          param.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                        )}
+                                      >
+                                        {param.type}
+                                      </Badge>
+                                    </Label>
+                                    <div className="relative">
+                                      <Input
+                                        value={functionParams[param.name] || ""}
+                                        onChange={(e) => {
+                                          const value = e.target.value;
+                                          setFunctionParams((prev) => ({
+                                            ...prev,
+                                            [param.name]: value,
+                                          }));
+
+                                          // Validate input
+                                          if (!validateParam(value, param.type)) {
+                                            setParamErrors((prev) => ({
+                                              ...prev,
+                                              [param.name]: `Invalid ${param.type} value`,
+                                            }));
+                                          } else {
+                                            setParamErrors((prev) => {
+                                              const { [param.name]: _, ...rest } = prev;
+                                              return rest;
+                                            });
+                                          }
+                                        }}
+                                        placeholder={getPlaceholder(param.type)}
+                                        className={cn(
+                                          "font-mono text-sm h-9",
+                                          paramErrors[param.name] && "border-red-500"
+                                        )}
+                                      />
+                                      {paramErrors[param.name] && (
+                                        <span className="absolute -bottom-4 left-0 text-xs text-red-500">
+                                          {paramErrors[param.name]}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))
+                            )}
+
+                            <Button
+                              className={cn(
+                                "w-full",
+                                isReadOnlyFunction(selectedFunction) ? "bg-blue-600 hover:bg-blue-700" : "",
+                                metadata.functions
+                                  .find((fn: any) => fn.name === selectedFunction)
+                                  ?.parameters.length === 0 && "mt-2"
+                              )}
+                              size="sm"
+                              disabled={Object.keys(paramErrors).length > 0}
+                            >
+                              {isReadOnlyFunction(selectedFunction) ? "Query Function" : "Call Function"}
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex h-[300px] items-center justify-center text-center">
+                          <div className="space-y-2 max-w-[200px]">
+                            <FileText className="h-8 w-8 mx-auto text-gray-400" />
+                            <p className="text-sm text-muted-foreground">
+                              Select a function from the list to view its parameters
+                            </p>
+                          </div>
+                        </div>
                       )}
+                    </TabsContent>
 
-                      <Button
-                        className={cn(
-                          "w-full",
-                          isReadOnlyFunction(selectedFunction) ? "bg-blue-600 hover:bg-blue-700" : "",
-                          metadata.functions
-                            .find((fn: any) => fn.name === selectedFunction)
-                            ?.parameters.length === 0 && "mt-2"
-                        )}
-                        size="sm"
-                        disabled={Object.keys(paramErrors).length > 0}
-                      >
-                        {isReadOnlyFunction(selectedFunction) ? "Query Function" : "Call Function"}
-                      </Button>
-                    </div>
-                  </>
-                )}
+                    <TabsContent value="enums" className="p-4 space-y-4">
+                      {metadata.enums?.length ? (
+                        metadata.enums.map((enum_: any) => (
+                          <div key={enum_.name} className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-mono text-sm">{enum_.name}</h4>
+                              {enum_.isErrorEnum && (
+                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                  error
+                                </Badge>
+                              )}
+                            </div>
+                            {enum_.doc && (
+                              <p className="text-xs text-muted-foreground">{enum_.doc}</p>
+                            )}
+                            <div className="space-y-1">
+                              {enum_.variants.map((variant: any) => (
+                                <div key={variant.name} className="flex items-center gap-2 text-xs">
+                                  <Badge variant="outline" className="font-mono">
+                                    {variant.value}
+                                  </Badge>
+                                  <span className="font-mono">{variant.name}</span>
+                                  {variant.doc && (
+                                    <span className="text-muted-foreground">- {variant.doc}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-4 text-sm text-muted-foreground">
+                          No enums found in contract
+                        </div>
+                      )}
+                    </TabsContent>
 
-                {!selectedFunction && metadata.functions.length > 0 && (
-                  <div className="flex h-[300px] items-center justify-center text-center border rounded-md">
-                    <div className="space-y-2 max-w-[200px]">
-                      <FileText className="h-8 w-8 mx-auto text-gray-400" />
-                      <p className="text-sm text-muted-foreground">
-                        Select a function from the list to view its parameters
-                      </p>
-                    </div>
-                  </div>
-                )}
+                    <TabsContent value="unions" className="p-4 space-y-4">
+                      {metadata.unions?.length ? (
+                        metadata.unions.map((union: any) => (
+                          <div key={union.name} className="space-y-2">
+                            <h4 className="font-mono text-sm">{union.name}</h4>
+                            {union.doc && (
+                              <p className="text-xs text-muted-foreground">{union.doc}</p>
+                            )}
+                            <div className="space-y-1">
+                              {union.cases.map((case_: any) => (
+                                <div key={case_.name} className="flex items-center gap-2 text-xs">
+                                  <span className="font-mono">{case_.name}</span>
+                                  {case_.type && (
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        "font-mono",
+                                        case_.type.includes('address') && "bg-purple-50 border-purple-200 text-purple-700",
+                                        case_.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
+                                        case_.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                      )}
+                                    >
+                                      {case_.type}
+                                    </Badge>
+                                  )}
+                                  {case_.doc && (
+                                    <span className="text-muted-foreground">- {case_.doc}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-4 text-sm text-muted-foreground">
+                          No unions or structs found in contract
+                        </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </div>
               </div>
             </div>
           )}
