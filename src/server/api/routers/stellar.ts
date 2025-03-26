@@ -5,34 +5,75 @@ import { Sep10 } from "~/server/services/Sep10";
 import { handleHorizonServerError } from "~/lib/utils";
 import { account, server } from "~/lib/utils";
 import { Asset, rpc, contract, Address, xdr, Soroban } from "@stellar/stellar-sdk";
-import { ContractFunction, ContractFunctionParam, ContractMetadata } from "~/types/contracts";
+import { ContractFunction, ContractFunctionParam } from "~/types/contracts";
 import { SAC_FUNCTIONS } from "~/lib/constants/sac";
+
+// Helper function to decode Buffer to string
+const decodeBuffer = (buf: Buffer | string): string => {
+  if (Buffer.isBuffer(buf)) {
+    return buf.toString('utf8');
+  }
+  return String(buf);
+};
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
-// Helper function to parse XDR type definitions
-function parseXdrType(type: xdr.ScSpecTypeDef): string {
-  // Get the switch case (type name)
-  const typeName = type.switch().name;
+// Helper to find UDT definitions in the contract spec
+function findUdtDefinition(spec: any, typeName: string) {
+  return spec.entries.find((entry: ContractEntry) =>
+    entry._arm === 'udtStructV0' && decodeBuffer(entry._value.name()) === typeName
+  )
+}
 
+// Helper to parse UDT fields from its definition
+function parseUdtFields(udtDef: any, spec: any) {
+  if (!udtDef?._value?.fields) return null;
+
+
+  const fields = udtDef._value?.fields()?.map((field: any) => {
+    return ({
+      name: decodeBuffer(field.name()),
+      type: parseXdrType(field.type(), spec),
+      // Include the documentation if available
+      doc: field.doc ? decodeBuffer(field.doc()) : undefined
+    })
+  });
+  return fields;
+}
+
+// Modified parseXdrType to include contract spec
+function parseXdrType(type: xdr.ScSpecTypeDef, contractSpec?: any): string {
+  const typeName = type.switch().name;
   // Handle vector types recursively
   if (typeName === 'scSpecTypeVec') {
     const elementType = type.vec().elementType();
-    return `vec<${parseXdrType(elementType)}>`;
+    return `vec<${parseXdrType(elementType, contractSpec)}>`;
   }
 
-  // Handle UDT (User Defined Type) case
+  // Handle UDT case
   if (typeName === 'scSpecTypeUdt') {
-    // Extract the name using the proper method
-    const udtName = type.udt().name();
-    if (Buffer.isBuffer(udtName)) {
-      return udtName.toString('utf8');
+    const udtName = type.udt().name().toString('utf8');
+
+    if (contractSpec) {
+      const udtDef = findUdtDefinition(contractSpec, udtName);
+      if (udtDef) {
+        const fields = parseUdtFields(udtDef, contractSpec);
+        if (fields) {
+          const fieldsStr = fields
+            .map((f: ParsedField) => {
+              return `${f.name}: ${f.type}`;
+            })
+            .join(', ');
+          return `${udtName}{${fieldsStr}}`;
+        }
+      }
     }
-    return String(udtName);
+
+    return udtName;
   }
 
-  // Map XDR type names to readable type names
+  // Rest of the type mapping remains the same
   switch (typeName) {
     case 'scSpecTypeU32':
       return 'u32';
@@ -65,19 +106,147 @@ function parseXdrType(type: xdr.ScSpecTypeDef): string {
     case 'scSpecTypeAddress':
       return 'address';
     case 'scSpecTypeMap':
-      const keyType = parseXdrType(type.map().keyType());
-      const valueType = parseXdrType(type.map().valueType());
+      const keyType = parseXdrType(type.map().keyType(), contractSpec);
+      const valueType = parseXdrType(type.map().valueType(), contractSpec);
       return `map<${keyType},${valueType}>`;
     case 'scSpecTypeTuple':
-      const valueTypes = type.tuple().valueTypes().map(parseXdrType);
+      const valueTypes = type.tuple().valueTypes().map((value) => parseXdrType(value, contractSpec));
       return `tuple<${valueTypes.join(',')}>`;
     case 'scSpecTypeResult':
-      const okType = type.result().okType() ? parseXdrType(type.result().okType()) : 'void';
-      const errorType = type.result().errorType() ? parseXdrType(type.result().errorType()) : 'void';
+      const okType = type.result().okType() ? parseXdrType(type.result().okType(), contractSpec) : 'void';
+      const errorType = type.result().errorType() ? parseXdrType(type.result().errorType(), contractSpec) : 'void';
       return `result<${okType},${errorType}>`;
     default:
       return typeName.replace('scSpecType', '').toLowerCase();
   }
+}
+
+// Add these interfaces at the top with the other interfaces
+interface EnumVariant {
+  name: string;
+  value: number;
+  doc?: string;
+}
+
+interface ContractEnum {
+  name: string;
+  variants: EnumVariant[];
+  doc?: string;
+  isErrorEnum: boolean;
+}
+
+interface ContractEntry {
+  _arm: string;
+  _value: {
+    name: () => Buffer;
+    doc?: () => Buffer;
+    fields?: () => any[];
+    cases?: () => any[];
+  };
+}
+
+interface ParsedField {
+  name: string;
+  type: string;
+  doc?: string;
+}
+
+// Helper function to parse enums
+function parseEnums(spec: any): ContractEnum[] {
+  const enums = spec.entries
+    .filter((entry: ContractEntry) =>
+      // Look for both regular and error enums
+      entry._arm === 'udtEnumV0' || entry._arm === 'udtErrorEnumV0'
+    )
+    .map((entry: ContractEntry) => {
+      const name = decodeBuffer(entry._value.name());
+      const doc = entry._value.doc ? decodeBuffer(entry._value.doc()) : undefined;
+
+      const variants = entry._value.cases?.().map((variant: any) => ({
+        name: decodeBuffer(variant.name()),
+        value: variant.value(),
+        doc: variant.doc ? decodeBuffer(variant.doc()) : undefined
+      })) || [];
+
+      // For the RequestType enum, the values should be 0 through 9
+      // matching the Rust enum definition
+      return {
+        name,
+        doc,
+        variants,
+        isErrorEnum: entry._arm === 'udtErrorEnumV0'  // Add flag to distinguish enum types
+      };
+    });
+
+  return enums;
+}
+
+interface UnionCase {
+  name: string;
+  type?: string;  // The type this variant holds
+  doc?: string;
+}
+
+interface ContractUnion {
+  name: string;
+  cases: UnionCase[];
+  doc?: string;
+}
+
+// Helper function to parse unions
+function parseUnions(spec: any): ContractUnion[] {
+  const unions = spec.entries
+    .filter((entry: ContractEntry) => entry._arm === 'udtUnionV0')
+    .map((entry: ContractEntry) => {
+      const name = decodeBuffer(entry._value.name());
+      const doc = entry._value.doc ? decodeBuffer(entry._value.doc()) : undefined;
+
+
+      const cases = entry._value.cases?.().map((unionCase: any) => {
+        // Each case is a ChildUnion with _switch.name indicating the type
+        const caseType = unionCase._switch.name;
+        const caseName = decodeBuffer(unionCase._value._attributes.name);
+        let type: string | undefined;
+
+        // Handle different case types
+        if (caseType === 'scSpecUdtUnionCaseTupleV0') {
+          // For tuple cases, we need to parse the tuple types
+          const tupleTypes = unionCase._value._attributes.types?.map((t: any) =>
+            parseXdrType(t, spec)
+          );
+          type = tupleTypes ? `tuple<${tupleTypes.join(',')}>` : undefined;
+        }
+        // Add other case types as needed (void, value, etc.)
+
+        return {
+          name: caseName,
+          type,
+          doc: unionCase._value._attributes.doc ?
+            decodeBuffer(unionCase._value._attributes.doc) :
+            undefined
+        };
+      }) || [];
+
+      return {
+        name,
+        doc,
+        cases
+      };
+    });
+
+  return unions;
+}
+
+// Modify the ContractMetadata interface to include enums and unions
+interface ContractMetadata {
+  name?: string;
+  symbol?: string;
+  decimals?: number;
+  totalSupply?: string;
+  version?: string;
+  functions: ContractFunction[];
+  enums?: ContractEnum[];
+  unions?: ContractUnion[];
 }
 
 export const stellarRouter = createTRPCRouter({
@@ -180,13 +349,11 @@ export const stellarRouter = createTRPCRouter({
           throw new Error("Failed to fetch contract metadata");
         });
 
-        // Helper function to decode Buffer to string
-        const decodeBuffer = (buf: Buffer | string): string => {
-          if (Buffer.isBuffer(buf)) {
-            return buf.toString('utf8');
+        contractClient.spec.entries.forEach((entry: ContractEntry) => {
+          if (true || entry._arm === 'udtStructV0') {
+            console.log('struct:', decodeBuffer(entry._value.name()))
           }
-          return String(buf);
-        };
+        })
 
         // Parse contract functions from spec
         const functions = contractClient.spec.funcs().map((fn: xdr.ScSpecFunctionV0) => {
@@ -194,10 +361,12 @@ export const stellarRouter = createTRPCRouter({
           const name = decodeBuffer(fn.name());
 
           // Parse parameters
-          const parameters = fn.inputs().map((param: xdr.ScSpecFunctionInputV0) => ({
-            name: decodeBuffer(param.name()),
-            type: parseXdrType(param.type())
-          }));
+          const parameters = fn.inputs().map((param: xdr.ScSpecFunctionInputV0, i) => {
+            return ({
+              name: decodeBuffer(param.name()),
+              type: parseXdrType(param.type(), contractClient.spec)
+            })
+          });
 
 
 
@@ -211,11 +380,21 @@ export const stellarRouter = createTRPCRouter({
           };
         });
 
+        // Parse enums from spec
+        const enums = parseEnums(contractClient.spec);
+        console.log('Contract enums:', enums);
+
+        // Parse unions from spec
+        const unions = parseUnions(contractClient.spec);
+        console.log('Contract unions:', unions);
+
         // Sort functions alphabetically
         functions.sort((a, b) => a.name.localeCompare(b.name));
 
         const metadata: ContractMetadata = {
-          functions: functions
+          functions,
+          enums,
+          unions
         };
 
         return metadata;
