@@ -583,7 +583,11 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
                       <div>
                         <Label className="text-xs font-medium">Function Parameters</Label>
                         <p className="text-xs text-muted-foreground">
-                          Enter parameters for {selectedFunction}
+                          {metadata.functions
+                            .find((fn: any) => fn.name === selectedFunction)
+                            ?.parameters.length === 0
+                            ? "This function doesn't require any parameters"
+                            : `Enter parameters for ${selectedFunction}`}
                         </p>
                       </div>
                       <Badge
@@ -602,64 +606,81 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
                     <div className="space-y-3">
                       {metadata.functions
                         .find((fn: any) => fn.name === selectedFunction)
-                        ?.parameters.map((param: any) => (
-                          <div key={param.name} className="space-y-1.5">
-                            <Label className="text-xs flex items-center justify-between">
-                              <span className="font-mono">{param.name}</span>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "font-mono text-[10px]",
-                                  param.type === 'address' && "bg-purple-50 border-purple-200 text-purple-700",
-                                  param.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
-                                  param.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
-                                )}
-                              >
-                                {param.type}
-                              </Badge>
-                            </Label>
-                            <div className="relative">
-                              <Input
-                                value={functionParams[param.name] || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  setFunctionParams((prev) => ({
-                                    ...prev,
-                                    [param.name]: value,
-                                  }));
-
-                                  // Validate input
-                                  if (!validateParam(value, param.type)) {
-                                    setParamErrors((prev) => ({
+                        ?.parameters.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-6 px-4 border rounded-md bg-gray-50/50">
+                          <Terminal className="h-8 w-8 text-gray-400 mb-3" />
+                          <p className="text-sm text-center text-muted-foreground mb-1">
+                            Ready to query {selectedFunction}()
+                          </p>
+                          <p className="text-xs text-center text-muted-foreground">
+                            This is a direct call that returns {selectedFunction === 'decimals' ? 'a number' : 'a string'}
+                          </p>
+                        </div>
+                      ) : (
+                        metadata.functions
+                          .find((fn: any) => fn.name === selectedFunction)
+                          ?.parameters.map((param: any) => (
+                            <div key={param.name} className="space-y-1.5">
+                              <Label className="text-xs flex items-center justify-between">
+                                <span className="font-mono">{param.name}</span>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "font-mono text-[10px]",
+                                    param.type === 'address' && "bg-purple-50 border-purple-200 text-purple-700",
+                                    param.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
+                                    param.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                  )}
+                                >
+                                  {param.type}
+                                </Badge>
+                              </Label>
+                              <div className="relative">
+                                <Input
+                                  value={functionParams[param.name] || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setFunctionParams((prev) => ({
                                       ...prev,
-                                      [param.name]: `Invalid ${param.type} value`,
+                                      [param.name]: value,
                                     }));
-                                  } else {
-                                    setParamErrors((prev) => {
-                                      const { [param.name]: _, ...rest } = prev;
-                                      return rest;
-                                    });
-                                  }
-                                }}
-                                placeholder={getPlaceholder(param.type)}
-                                className={cn(
-                                  "font-mono text-sm h-9",
-                                  paramErrors[param.name] && "border-red-500"
+
+                                    // Validate input
+                                    if (!validateParam(value, param.type)) {
+                                      setParamErrors((prev) => ({
+                                        ...prev,
+                                        [param.name]: `Invalid ${param.type} value`,
+                                      }));
+                                    } else {
+                                      setParamErrors((prev) => {
+                                        const { [param.name]: _, ...rest } = prev;
+                                        return rest;
+                                      });
+                                    }
+                                  }}
+                                  placeholder={getPlaceholder(param.type)}
+                                  className={cn(
+                                    "font-mono text-sm h-9",
+                                    paramErrors[param.name] && "border-red-500"
+                                  )}
+                                />
+                                {paramErrors[param.name] && (
+                                  <span className="absolute -bottom-4 left-0 text-xs text-red-500">
+                                    {paramErrors[param.name]}
+                                  </span>
                                 )}
-                              />
-                              {paramErrors[param.name] && (
-                                <span className="absolute -bottom-4 left-0 text-xs text-red-500">
-                                  {paramErrors[param.name]}
-                                </span>
-                              )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))
+                      )}
 
                       <Button
                         className={cn(
                           "w-full",
-                          isReadOnlyFunction(selectedFunction) ? "bg-blue-600 hover:bg-blue-700" : ""
+                          isReadOnlyFunction(selectedFunction) ? "bg-blue-600 hover:bg-blue-700" : "",
+                          metadata.functions
+                            .find((fn: any) => fn.name === selectedFunction)
+                            ?.parameters.length === 0 && "mt-2"
                         )}
                         size="sm"
                         disabled={Object.keys(paramErrors).length > 0}
