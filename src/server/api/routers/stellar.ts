@@ -102,6 +102,20 @@ export const stellarRouter = createTRPCRouter({
       try {
         console.log('input to getContractMetadata:', input.contractAddress);
 
+        // Check if this is native XLM
+        if (input.contractAddress === 'native') {
+          // For native XLM, we use the standard SAC interface
+          const metadata: ContractMetadata = {
+            name: "Native",
+            symbol: "XLM",
+            decimals: 7,
+            totalSupply: "0",
+            version: "1",
+            functions: SAC_FUNCTIONS
+          };
+          return metadata;
+        }
+
         // Check if this is an Asset Contract
         const isAssetContract = input.contractAddress.includes('-');
         if (isAssetContract) {

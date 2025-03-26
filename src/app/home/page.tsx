@@ -31,7 +31,9 @@ import {
   FileText,
   Code2,
   CircleDollarSign,
-  EuroIcon
+  EuroIcon,
+  StarIcon,
+  Combine
 } from "lucide-react"
 import { SignersActions } from '../_components/signers-actions'
 import { Keypair } from '@stellar/stellar-sdk'
@@ -269,6 +271,12 @@ interface PopularContract {
 
 const popularContracts: PopularContract[] = [
   {
+    name: "Native XLM",
+    description: "Stellar's native token",
+    address: "native",
+    icon: <StarIcon className="h-3.5 w-3.5" />
+  },
+  {
     name: "USDC Token",
     description: "Circle's USD Coin on Stellar",
     address: "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
@@ -279,6 +287,12 @@ const popularContracts: PopularContract[] = [
     description: "Circle's Euro Coin on Stellar",
     address: "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO",
     icon: <EuroIcon className="h-3.5 w-3.5" />
+  },
+  {
+    name: "Blend Token",
+    description: "Blend Protocol Token",
+    address: "BLEND-CCHZKMVGSP3N4YEHD4EFHA6UKND5NDVP4COTAFENAFMPRNTEC2U2ST5F",
+    icon: <Combine className="h-3.5 w-3.5" />
   }
 ];
 
