@@ -22,6 +22,16 @@ function parseXdrType(type: xdr.ScSpecTypeDef): string {
     return `vec<${parseXdrType(elementType)}>`;
   }
 
+  // Handle UDT (User Defined Type) case
+  if (typeName === 'scSpecTypeUdt') {
+    // Extract the name using the proper method
+    const udtName = type.udt().name();
+    if (Buffer.isBuffer(udtName)) {
+      return udtName.toString('utf8');
+    }
+    return String(udtName);
+  }
+
   // Map XDR type names to readable type names
   switch (typeName) {
     case 'scSpecTypeU32':
