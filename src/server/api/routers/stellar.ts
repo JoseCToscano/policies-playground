@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Sep10 } from "~/server/services/Sep10";
 import { handleHorizonServerError } from "~/lib/utils";
 import { account, server } from "~/lib/utils";
-import { Asset, rpc, contract, Address, xdr, Soroban } from "@stellar/stellar-sdk";
+import { Asset, rpc, contract, Address, xdr, Soroban, } from "@stellar/stellar-sdk";
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
@@ -120,12 +120,125 @@ export const stellarRouter = createTRPCRouter({
     }))
     .query(async ({ input }) => {
       try {
+        console.log('input to getContractMetadata:', input.contractAddress);
 
-        // Get contract spec/interface
+        // Check if this is an Asset Contract
+        const isAssetContract = input.contractAddress.includes('-');
+        if (isAssetContract) {
+          const [code, issuer] = input.contractAddress.split('-');
+          if (!code || !issuer) {
+            throw new Error("Invalid Asset Contract address format");
+          }
+          const asset = new Asset(code, issuer);
+          const sorobanServer = new rpc.Server("https://soroban-testnet.stellar.org");
+          const passphrase = "Test SDF Network ; September 2015";
+
+          // Get the Stellar Asset Contract ID
+          const contractId = await asset.contractId(passphrase);
+
+          // For Asset Contracts, we know the standard interface
+          const metadata: ContractMetadata = {
+            name: code,
+            symbol: code,
+            decimals: 7, // Standard for Stellar assets
+            totalSupply: "0", // We could fetch this if needed
+            version: "1",
+            functions: [
+              {
+                name: "transfer",
+                parameters: [
+                  { name: "to", type: "address" },
+                  { name: "amount", type: "i128" }
+                ]
+              },
+              {
+                name: "burn",
+                parameters: [
+                  { name: "amount", type: "i128" }
+                ]
+              },
+              {
+                name: "mint",
+                parameters: [
+                  { name: "to", type: "address" },
+                  { name: "amount", type: "i128" }
+                ]
+              },
+              {
+                name: "transfer_from",
+                parameters: [
+                  { name: "from", type: "address" },
+                  { name: "to", type: "address" },
+                  { name: "amount", type: "i128" }
+                ]
+              },
+              {
+                name: "set_admin",
+                parameters: [
+                  { name: "new_admin", type: "address" }
+                ]
+              },
+              {
+                name: "approve",
+                parameters: [
+                  { name: "spender", type: "address" },
+                  { name: "amount", type: "i128" }
+                ]
+              },
+              {
+                name: "upgrade",
+                parameters: [
+                  { name: "new_wasm_hash", type: "bytes" }
+                ]
+              },
+              {
+                name: "init",
+                parameters: [
+                  { name: "admin", type: "address" },
+                  { name: "decimal", type: "u32" },
+                  { name: "name", type: "string" },
+                  { name: "symbol", type: "string" }
+                ]
+              },
+              {
+                name: "balance",
+                parameters: [
+                  { name: "id", type: "address" }
+                ]
+              },
+              {
+                name: "allowance",
+                parameters: [
+                  { name: "from", type: "address" },
+                  { name: "spender", type: "address" }
+                ]
+              },
+              {
+                name: "decimals",
+                parameters: []
+              },
+              {
+                name: "name",
+                parameters: []
+              },
+              {
+                name: "symbol",
+                parameters: []
+              }
+            ]
+          };
+
+          return metadata;
+        }
+
+        // If not an Asset Contract, proceed with normal contract metadata fetching
         const contractClient = await contract.Client.from({
           contractId: input.contractAddress,
           networkPassphrase: 'Test SDF Network ; September 2015',
           rpcUrl: 'https://soroban-testnet.stellar.org'
+        }).catch((e) => {
+          console.error("Error fetching contract metadata:", e);
+          throw new Error("Failed to fetch contract metadata");
         });
 
         // Helper function to decode Buffer to string
@@ -147,7 +260,6 @@ export const stellarRouter = createTRPCRouter({
             type: parseXdrType(param.type())
           }));
 
-
           console.log(`Function: ${name}`);
           console.log('Parameters:', parameters);
           console.log('---');
@@ -162,11 +274,6 @@ export const stellarRouter = createTRPCRouter({
         functions.sort((a, b) => a.name.localeCompare(b.name));
 
         const metadata: ContractMetadata = {
-          name: "test",
-          symbol: "test",
-          decimals: 0,
-          totalSupply: "0",
-          version: "0",
           functions: functions
         };
 
@@ -196,7 +303,6 @@ export const stellarRouter = createTRPCRouter({
       });
 
       const balances = await Promise.all(balancePromises);
-      console.log('balances:', balances);
       return Object.fromEntries(balances.map(({ key, balance }) => [key, balance]));
     }),
 });
