@@ -11,6 +11,7 @@ const config = {
         'passkey-factory-sdk', 
         'passkey-kit-sdk',
         'sac-sdk',
+        'zafegard-policy-sdk',
     ],
 };
 

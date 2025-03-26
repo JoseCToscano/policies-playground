@@ -194,11 +194,7 @@ export const useSmartWallet = () => {
                 console.log('initWallet done', cid);
 
         } catch (error) {
-            console.error('Detailed error:', {
-                message: error.message,
-                stack: error.stack,
-                response: error.response // If it's an API error
-            });
+            console.error(error);
             toast.error((error as Error)?.message ?? "Unknown error");
         }
     }
@@ -217,12 +213,7 @@ export const useSmartWallet = () => {
                 rawResponse = await server.getSigners(contractId);
                 console.log('Raw response:', rawResponse);
             } catch (fetchError) {
-                console.error('Fetch error:', {
-                    error: fetchError,
-                    status: fetchError?.response?.status,
-                    statusText: fetchError?.response?.statusText,
-                    raw: await fetchError?.response?.text?.(),
-                });
+                console.error(fetchError);
                 throw fetchError;
             }
 
@@ -582,6 +573,32 @@ export const useSmartWallet = () => {
         getSubWallets();
     }
 
+    // async function attach_Policy(signerPublicKey: string, policyId) {
+    //     try {
+    //         const ed25519_limits = new Map();
+
+    //         // ed25519 key can call do_math contract but only if it also calls the do_math policy
+    //         ed25519_limits.set(import.meta.env.PUBLIC_DO_MATH, [SignerKey.Policy(import.meta.env.PUBLIC_DO_MATH_POLICY)])
+
+    //         const at = await account.addEd25519(signerPublicKey, new Map(), SignerStore.Temporary);
+
+
+
+    //         const at = await pk_wallet.addEd25519(
+    //             keypair.publicKey(),
+    //             ed25519_limits,
+    //             SignerStore.Temporary
+    //         );
+
+    //         await pk_wallet.sign(at, { keyId: keyId_ });
+    //         const res = await pk_server.send(at.built!);
+
+    //         console.log(res);
+    //     } finally {
+    //         loading.set("attach_Policy", false);
+    //         loading = loading
+    //     }
+    // }
 
     return {
         create,
