@@ -56,6 +56,7 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { cn } from '~/lib/utils'
+import { type RouterOutputs } from "~/utils/api";
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
@@ -85,6 +86,14 @@ type Policy = {
 
 type StoredPolicies = {
   [walletId: string]: Policy[];
+}
+
+interface ContractFunction {
+  name: string;
+  parameters: Array<{
+    name: string;
+    type: string;
+  }>;
 }
 
 function SignerModal({ signer, policies, onClose }: {
@@ -277,6 +286,8 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
   const [contractAddress, setContractAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [metadata, setMetadata] = useState<any>(null);
+  const [selectedFunction, setSelectedFunction] = useState<string | null>(null);
+  const [functionParams, setFunctionParams] = useState<Record<string, string>>({});
 
   const handleContractSelect = (contract: PopularContract) => {
     if (contract.address) {
@@ -292,8 +303,43 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
   useEffect(() => {
     if (contractMetadata) {
       setMetadata(contractMetadata);
+      // Reset function selection when contract changes
+      setSelectedFunction(null);
+      setFunctionParams({});
     }
   }, [contractMetadata]);
+
+  // Handle function selection
+  const handleFunctionSelect = (functionName: string) => {
+    setSelectedFunction(functionName);
+    setFunctionParams({});
+  };
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent, functionName: string) => {
+    const functions = metadata?.functions || [];
+    const currentIndex = functions.findIndex((f: ContractFunction) => f.name === functionName);
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        if (currentIndex < functions.length - 1) {
+          setSelectedFunction(functions[currentIndex + 1].name);
+        }
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        if (currentIndex > 0) {
+          setSelectedFunction(functions[currentIndex - 1].name);
+        }
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        handleFunctionSelect(functionName);
+        break;
+    }
+  };
 
   return (
     <Card className="mt-6">
@@ -363,66 +409,136 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
           )}
 
           {metadata && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {metadata.name && (
+            <div className="grid grid-cols-2 gap-4">
+              {/* Left Column: Contract Info & Functions */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {metadata.name && (
+                    <div>
+                      <Label className="text-xs font-medium">Name</Label>
+                      <div className="mt-1.5 text-sm">{metadata.name}</div>
+                    </div>
+                  )}
+                  {metadata.symbol && (
+                    <div>
+                      <Label className="text-xs font-medium">Symbol</Label>
+                      <div className="mt-1.5 text-sm">{metadata.symbol}</div>
+                    </div>
+                  )}
+                  {metadata.decimals !== undefined && (
+                    <div>
+                      <Label className="text-xs font-medium">Decimals</Label>
+                      <div className="mt-1.5 text-sm">{metadata.decimals}</div>
+                    </div>
+                  )}
+                  {metadata.totalSupply && (
+                    <div>
+                      <Label className="text-xs font-medium">Total Supply</Label>
+                      <div className="mt-1.5 text-sm">{metadata.totalSupply}</div>
+                    </div>
+                  )}
+                  {metadata.version && (
+                    <div>
+                      <Label className="text-xs font-medium">Version</Label>
+                      <div className="mt-1.5 text-sm">{metadata.version}</div>
+                    </div>
+                  )}
+                </div>
+
+                {metadata.functions.length > 0 && (
                   <div>
-                    <Label className="text-xs font-medium">Name</Label>
-                    <div className="mt-1.5 text-sm">{metadata.name}</div>
-                  </div>
-                )}
-                {metadata.symbol && (
-                  <div>
-                    <Label className="text-xs font-medium">Symbol</Label>
-                    <div className="mt-1.5 text-sm">{metadata.symbol}</div>
-                  </div>
-                )}
-                {metadata.decimals !== undefined && (
-                  <div>
-                    <Label className="text-xs font-medium">Decimals</Label>
-                    <div className="mt-1.5 text-sm">{metadata.decimals}</div>
-                  </div>
-                )}
-                {metadata.totalSupply && (
-                  <div>
-                    <Label className="text-xs font-medium">Total Supply</Label>
-                    <div className="mt-1.5 text-sm">{metadata.totalSupply}</div>
-                  </div>
-                )}
-                {metadata.version && (
-                  <div>
-                    <Label className="text-xs font-medium">Version</Label>
-                    <div className="mt-1.5 text-sm">{metadata.version}</div>
+                    <Label className="text-xs font-medium">Available Functions</Label>
+                    <div className="mt-1.5 max-h-[300px] overflow-y-auto rounded-md border">
+                      {metadata.functions.map((fn: any) => (
+                        <button
+                          key={fn.name}
+                          onClick={() => handleFunctionSelect(fn.name)}
+                          onKeyDown={(e) => handleKeyDown(e, fn.name)}
+                          className={cn(
+                            "w-full border-b p-3 text-left transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                            selectedFunction === fn.name && "bg-muted",
+                            "last:border-b-0"
+                          )}
+                          tabIndex={0}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-sm">{fn.name}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {fn.parameters.length} params
+                            </Badge>
+                          </div>
+                          {fn.parameters.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {fn.parameters.map((param: any) => (
+                                <div key={param.name} className="flex items-center gap-2 text-xs">
+                                  <Badge variant="outline" className="font-mono">
+                                    {param.type}
+                                  </Badge>
+                                  <span className="font-mono text-muted-foreground">
+                                    {param.name}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {metadata.functions.length > 0 && (
-                <div>
-                  <Label className="text-xs font-medium">Available Functions</Label>
-                  <div className="mt-1.5 space-y-2">
-                    {metadata.functions.map((fn: any) => (
-                      <div key={fn.name} className="rounded-md border p-3">
-                        <div className="font-mono text-sm">{fn.name}</div>
-                        {fn.parameters.length > 0 && (
-                          <div className="mt-2 space-y-1.5">
-                            {fn.parameters.map((param: any) => (
-                              <div key={param.name} className="flex items-center gap-2 text-sm">
-                                <Badge variant="outline" className="font-mono">
-                                  {param.type}
-                                </Badge>
-                                <span className="font-mono text-muted-foreground">
-                                  {param.name}
-                                </span>
-                              </div>
-                            ))}
+              {/* Right Column: Function Parameters & Execution */}
+              <div className="space-y-4">
+                {selectedFunction && (
+                  <>
+                    <div>
+                      <Label className="text-xs font-medium">Function Parameters</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Enter parameters for {selectedFunction}
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {metadata.functions
+                        .find((fn: any) => fn.name === selectedFunction)
+                        ?.parameters.map((param: any) => (
+                          <div key={param.name} className="space-y-1.5">
+                            <Label className="text-xs flex items-center justify-between">
+                              {param.name}
+                              <Badge variant="outline" className="font-mono text-[10px]">
+                                {param.type}
+                              </Badge>
+                            </Label>
+                            <Input
+                              value={functionParams[param.name] || ""}
+                              onChange={(e) =>
+                                setFunctionParams((prev) => ({
+                                  ...prev,
+                                  [param.name]: e.target.value,
+                                }))
+                              }
+                              placeholder={`Enter ${param.type}`}
+                              className="font-mono text-sm h-9"
+                            />
                           </div>
-                        )}
-                      </div>
-                    ))}
+                        ))}
+
+                      <Button className="w-full" size="sm">
+                        Call Function
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                {!selectedFunction && metadata.functions.length > 0 && (
+                  <div className="flex h-full items-center justify-center text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Select a function to view its parameters
+                    </p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
         </div>

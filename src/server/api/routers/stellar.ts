@@ -31,6 +31,48 @@ interface ContractMetadata {
   functions: ContractFunction[];
 }
 
+// Helper function to parse XDR type definitions
+function parseXdrType(type: xdr.ScSpecTypeDef): string {
+  // Get the switch case (type name)
+  const typeName = type.switch().name;
+
+  // Map XDR type names to readable type names
+  switch (typeName) {
+    case 'scSpecTypeU32':
+      return 'u32';
+    case 'scSpecTypeI32':
+      return 'i32';
+    case 'scSpecTypeU64':
+      return 'u64';
+    case 'scSpecTypeI64':
+      return 'i64';
+    case 'scSpecTypeTimepoint':
+      return 'timepoint';
+    case 'scSpecTypeU128':
+      return 'u128';
+    case 'scSpecTypeI128':
+      return 'i128';
+    case 'scSpecTypeU256':
+      return 'u256';
+    case 'scSpecTypeI256':
+      return 'i256';
+    case 'scSpecTypeBytes':
+      return 'bytes';
+    case 'scSpecTypeString':
+      return 'string';
+    case 'scSpecTypeBool':
+      return 'bool';
+    case 'scSpecTypeVoid':
+      return 'void';
+    case 'scSpecTypeSymbol':
+      return 'symbol';
+    case 'scSpecTypeAddress':
+      return 'address';
+    default:
+      return typeName.replace('scSpecType', '').toLowerCase();
+  }
+}
+
 export const stellarRouter = createTRPCRouter({
   getAuthChallenge: publicProcedure
     .input(
@@ -78,7 +120,6 @@ export const stellarRouter = createTRPCRouter({
     }))
     .query(async ({ input }) => {
       try {
-        const sorobanServer = new rpc.Server("https://soroban-testnet.stellar.org", { allowHttp: true });
 
         // Get contract spec/interface
         const contractClient = await contract.Client.from({
@@ -86,18 +127,39 @@ export const stellarRouter = createTRPCRouter({
           networkPassphrase: 'Test SDF Network ; September 2015',
           rpcUrl: 'https://soroban-testnet.stellar.org'
         });
-        // Parse contract functions from spec
-        const functions = contractClient.spec.funcs().map((fn: xdr.ScSpecFunctionV0) => ({
-          name: fn.name(),
-          parameters: fn.inputs().map((param: xdr.ScSpecFunctionInputV0) => ({
-            name: param.name(),
-            type: param.type()
-          }))
-        }));
 
-        console.log('functions:', functions);
-        console.log('contractClient:', contractClient);
-        console.log('contractClient.spec:', contractClient.spec);
+        // Helper function to decode Buffer to string
+        const decodeBuffer = (buf: Buffer | string): string => {
+          if (Buffer.isBuffer(buf)) {
+            return buf.toString('utf8');
+          }
+          return String(buf);
+        };
+
+        // Parse contract functions from spec
+        const functions = contractClient.spec.funcs().map((fn: xdr.ScSpecFunctionV0) => {
+          // Get function name
+          const name = decodeBuffer(fn.name());
+
+          // Parse parameters
+          const parameters = fn.inputs().map((param: xdr.ScSpecFunctionInputV0) => ({
+            name: decodeBuffer(param.name()),
+            type: parseXdrType(param.type())
+          }));
+
+
+          console.log(`Function: ${name}`);
+          console.log('Parameters:', parameters);
+          console.log('---');
+
+          return {
+            name,
+            parameters,
+          };
+        });
+
+        // Sort functions alphabetically
+        functions.sort((a, b) => a.name.localeCompare(b.name));
 
         const metadata: ContractMetadata = {
           name: "test",
@@ -105,8 +167,9 @@ export const stellarRouter = createTRPCRouter({
           decimals: 0,
           totalSupply: "0",
           version: "0",
-          functions: []
+          functions: functions
         };
+
         return metadata;
       } catch (e) {
         console.error("Error fetching contract metadata:", e);
