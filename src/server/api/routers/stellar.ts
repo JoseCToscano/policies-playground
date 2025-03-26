@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Sep10 } from "~/server/services/Sep10";
 import { handleHorizonServerError } from "~/lib/utils";
 import { account, server } from "~/lib/utils";
-import { Asset, rpc, contract, Address, xdr, Soroban } from "@stellar/stellar-sdk";
+import { Asset, rpc, contract, Address, xdr, Soroban, Transaction, TransactionBuilder, Networks } from "@stellar/stellar-sdk";
 import { ContractFunction, ContractFunctionParam } from "~/types/contracts";
 import { SAC_FUNCTIONS } from "~/lib/constants/sac";
 
@@ -424,5 +424,203 @@ export const stellarRouter = createTRPCRouter({
 
       const balances = await Promise.all(balancePromises);
       return Object.fromEntries(balances.map(({ key, balance }) => [key, balance]));
+    }),
+  prepareContractCall: publicProcedure
+    .input(
+      z.object({
+        contractAddress: z.string(),
+        method: z.string(),
+        args: z.array(z.any()),
+        isReadOnly: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        console.log('input to prepareContractCall:', {
+          contractAddress: input.contractAddress,
+          method: input.method,
+          argsCount: input.args.length,
+          isReadOnly: input.isReadOnly
+        });
+
+        // If this is a native asset (XLM) or a Stellar Asset Contract (token)
+        if (input.contractAddress === 'native' || input.contractAddress.includes('-')) {
+          // For native XLM or Stellar Asset Contract, handle with special case
+          // (This is just placeholder - you would implement actual XLM/SAC handling)
+          if (input.contractAddress === 'native') {
+            console.log('Preparing native XLM transaction');
+            // Handle native XLM (special case)
+          } else {
+            console.log('Preparing Stellar Asset Contract transaction');
+            const [code, issuer] = input.contractAddress.split('-');
+            // Handle Stellar Asset Contract
+          }
+        }
+
+        // For regular smart contracts
+        const contractId = input.contractAddress;
+        const method = input.method;
+        const args = input.args;
+
+        // Create a transaction for the contract call
+        const source = account;
+        let transaction: Transaction;
+
+        const sorobanServer = new rpc.Server("https://soroban-testnet.stellar.org");
+        const networkPassphrase = Networks.TESTNET;
+
+        if (input.isReadOnly) {
+          // For read-only functions, we can just simulate
+          // This generates a transaction that won't be submitted
+          const contract = new contract.Contract(contractId);
+          transaction = new TransactionBuilder(source, {
+            fee: "100",
+            networkPassphrase,
+          })
+            .addOperation(contract.call(method, ...args))
+            .setTimeout(30)
+            .build();
+        } else {
+          // For write functions, prepare a real transaction
+          const contract = new contract.Contract(contractId);
+          transaction = new TransactionBuilder(source, {
+            fee: "100",
+            networkPassphrase,
+          })
+            .addOperation(contract.call(method, ...args))
+            .setTimeout(30)
+            .build();
+
+          // Get transaction simulation to ensure the operation is valid
+          // and also to obtain the proper fee
+          const simulation = await sorobanServer.simulateTransaction(transaction);
+
+          if (simulation.status === "ERROR") {
+            throw new Error(`Simulation error: ${simulation.error}`);
+          }
+
+          // Apply the recommended fee and create the final transaction
+          const estimatedFee = parseInt(simulation.minResourceFee) + 100;
+          transaction = new TransactionBuilder(source, {
+            fee: estimatedFee.toString(),
+            networkPassphrase,
+          })
+            .addOperation(contract.call(method, ...args))
+            .setTimeout(30)
+            .build();
+        }
+
+        // Return the XDR for the transaction
+        return {
+          xdr: transaction.toXDR(),
+          simulation: "success", // Placeholder for actual simulation result
+        };
+      } catch (e) {
+        console.error("Error preparing contract call:", e);
+        handleHorizonServerError(e);
+      }
+    }),
+
+  queryContract: publicProcedure
+    .input(
+      z.object({
+        contractAddress: z.string(),
+        method: z.string(),
+        args: z.record(z.string(), z.any()).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        console.log('input to queryContract:', {
+          contractAddress: input.contractAddress,
+          method: input.method,
+        });
+
+        // For SAC tokens, special handling
+        if (input.contractAddress === 'native' || input.contractAddress.includes('-')) {
+          // Mock responses for standard token methods
+          if (input.method === 'balance') {
+            return { value: "1000000000" };
+          } else if (input.method === 'allowance') {
+            return { value: "500000000" };
+          } else if (input.method === 'decimals') {
+            return { value: 7 };
+          } else if (input.method === 'name') {
+            return { value: input.contractAddress === 'native' ? "Native XLM" : input.contractAddress.split('-')[0] };
+          } else if (input.method === 'symbol') {
+            return { value: input.contractAddress === 'native' ? "XLM" : input.contractAddress.split('-')[0] };
+          }
+        }
+
+        // For regular contracts, invoke the contract method
+        const sorobanServer = new rpc.Server("https://soroban-testnet.stellar.org");
+        const networkPassphrase = Networks.TESTNET;
+        const contractClient = await contract.Client.from({
+          contractId: input.contractAddress,
+          networkPassphrase,
+          rpcUrl: 'https://soroban-testnet.stellar.org'
+        });
+
+        // Convert the args object to an array of scvs in the order defined by the function
+        const scValArgs: xdr.ScVal[] = [];
+
+        // Find the function's parameter definitions
+        const fn = contractClient.spec.funcs().find(
+          (f: xdr.ScSpecFunctionV0) => decodeBuffer(f.name()) === input.method
+        );
+
+        if (!fn) {
+          throw new Error(`Function ${input.method} not found in contract`);
+        }
+
+        // Add args in the correct order based on function definition
+        if (input.args && fn.inputs().length > 0) {
+          for (const param of fn.inputs()) {
+            const paramName = decodeBuffer(param.name());
+            if (input.args[paramName] !== undefined) {
+              // Convert value to appropriate ScVal based on type
+              const value = input.args[paramName];
+              // Note: here we would normally convert to ScVal based on type
+              // For simplicity, we'll use a placeholder
+              scValArgs.push(xdr.ScVal.scvString(value.toString()));
+            }
+          }
+        }
+
+        // Simulate the contract call to get the result
+        const result = await contractClient.simulate(input.method, ...scValArgs);
+
+        // Process the ScVal result to a more user-friendly format
+        // This is a simple example, you would want to handle different types properly
+        let processedResult: any;
+
+        if (result.result) {
+          const resultType = result.result.switch().name;
+
+          if (resultType === 'scvString') {
+            processedResult = { value: result.result.str().toString() };
+          } else if (resultType === 'scvU32') {
+            processedResult = { value: result.result.u32() };
+          } else if (resultType === 'scvI32') {
+            processedResult = { value: result.result.i32() };
+          } else if (resultType === 'scvU64' || resultType === 'scvI64') {
+            processedResult = { value: result.result.i64().toString() };
+          } else if (resultType === 'scvU128' || resultType === 'scvI128') {
+            processedResult = { value: result.result.i128().toString() };
+          } else if (resultType === 'scvBool') {
+            processedResult = { value: result.result.b() };
+          } else {
+            // For other types, return a string representation
+            processedResult = { value: result.result.toXDR('base64') };
+          }
+        } else {
+          processedResult = { value: null };
+        }
+
+        return processedResult;
+      } catch (e) {
+        console.error("Error querying contract:", e);
+        handleHorizonServerError(e);
+      }
     }),
 });

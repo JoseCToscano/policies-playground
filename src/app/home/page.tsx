@@ -66,6 +66,7 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip"
 import { SAC_FUNCTION_DOCS } from "~/lib/constants/sac";
+import { addressToScVal, boolToScVal, i128ToScVal, numberToI128, numberToU64, stringToSymbol, u128ToScVal, u32ToScVal } from "~/lib/scHelper";
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
@@ -383,10 +384,29 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
   const [selectedUnion, setSelectedUnion] = useState<string | null>(null);
   const [functionParams, setFunctionParams] = useState<Record<string, string>>({});
   const [paramErrors, setParamErrors] = useState<Record<string, string>>({});
+  const [callResult, setCallResult] = useState<string | null>(null);
+  const [callError, setCallError] = useState<string | null>(null);
+  const [isCalling, setIsCalling] = useState(false);
+
+  const submitXDRMutation = api.stellar.submitXDR.useMutation({
+    onSuccess: (data) => {
+      toast.success("Function called successfully");
+      setCallResult(JSON.stringify(data?.result || { success: true }, null, 2));
+      setIsCalling(false);
+    },
+    onError: (error) => {
+      toast.error(`Error: ${error.message}`);
+      setCallError(error.message);
+      setIsCalling(false);
+    }
+  });
 
   const handleContractSelect = (contract: PopularContract) => {
     if (contract.address) {
       setContractAddress(contract.address);
+      // Reset any previous call results
+      setCallResult(null);
+      setCallError(null);
     }
   };
 
@@ -433,6 +453,158 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
         e.preventDefault();
         handleFunctionSelect(functionName);
         break;
+    }
+  };
+
+  // Prepare parameters for contract call
+  const prepareCallParameters = () => {
+    if (!selectedFunction || !metadata) return null;
+
+    const fn = metadata.functions.find((f: any) => f.name === selectedFunction);
+    if (!fn) return null;
+
+    const params: Record<string, any> = {};
+
+    for (const param of fn.parameters) {
+      const value = functionParams[param.name] || "";
+
+      // Convert values to appropriate types
+      if (param.type === 'u32' || param.type === 'i32') {
+        params[param.name] = parseInt(value);
+      } else if (param.type === 'u64' || param.type === 'i64' ||
+        param.type === 'u128' || param.type === 'i128') {
+        params[param.name] = value; // Keep as string for big numbers
+      } else if (param.type === 'bool') {
+        params[param.name] = value.toLowerCase() === 'true';
+      } else {
+        params[param.name] = value;
+      }
+    }
+
+    return params;
+  };
+
+  // Convert parameter to ScVal based on type
+  const paramToScVal = (value: any, type: string) => {
+    try {
+      // Handle common types
+      if (type === 'address') {
+        return addressToScVal(value);
+      } else if (type === 'u32') {
+        return u32ToScVal(Number(value));
+      } else if (type === 'i128') {
+        return i128ToScVal(value);
+      } else if (type === 'u128') {
+        return u128ToScVal(value);
+      } else if (type === 'bool') {
+        return boolToScVal(Boolean(value));
+      } else if (type === 'symbol') {
+        return stringToSymbol(value);
+      } else if (type.startsWith('u64')) {
+        return numberToU64(Number(value));
+      } else if (type.startsWith('i64')) {
+        return numberToI128(Number(value));
+      }
+
+      // Default handling for other types
+      console.warn(`Unsupported type: ${type}, using default conversion for: ${value}`);
+      return value;
+    } catch (error) {
+      console.error(`Error converting ${value} to ${type}:`, error);
+      throw new Error(`Failed to convert parameter of type ${type}: ${error}`);
+    }
+  };
+
+  // Create XDR for contract function call
+  const createContractCallXdr = async (fn: string, params: Record<string, any>) => {
+    if (!fn || !contractAddress) return null;
+
+    try {
+      const functionParams = metadata?.functions.find((f: ContractFunction) => f.name === fn)?.parameters || [];
+      const isReadOnly = isReadOnlyFunction(fn);
+
+      // Build parameters array with correct ScVal conversions
+      const scValParams: any[] = functionParams.map((param: { name: string; type: string }) => {
+        const value = params[param.name];
+        return paramToScVal(value, param.type);
+      });
+
+      // This is a custom procedure we'll add to the router
+      const response = await fetch('/api/prepare-contract-call', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contractAddress,
+          method: fn,
+          args: scValParams,
+          isReadOnly
+        }),
+      }).then(res => res.json());
+
+      return response.xdr;
+    } catch (error) {
+      console.error("Error creating contract call XDR:", error);
+      throw error;
+    }
+  };
+
+  // Execute contract function call
+  const executeContractCall = async () => {
+    if (!selectedFunction || !contractAddress || !metadata) {
+      toast.error("Please select a function and contract first");
+      return;
+    }
+
+    setIsCalling(true);
+    setCallResult(null);
+    setCallError(null);
+
+    try {
+      const params = prepareCallParameters();
+      if (params === null) {
+        throw new Error("Failed to prepare parameters");
+      }
+
+      // Handle read-only functions differently from write functions
+      if (isReadOnlyFunction(selectedFunction)) {
+        try {
+          // For read-only functions, we can directly query the result
+          const result = await fetch('/api/query-contract', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contractAddress,
+              method: selectedFunction,
+              args: params
+            }),
+          }).then(res => res.json());
+
+          setCallResult(JSON.stringify(result, null, 2));
+          toast.success(`${selectedFunction} called successfully`);
+        } catch (error: any) {
+          throw new Error(`Contract query failed: ${error.message}`);
+        }
+      } else {
+        // For write functions, we need to generate and submit XDR
+        const xdr = await createContractCallXdr(selectedFunction, params);
+
+        if (!xdr) {
+          throw new Error("Failed to create transaction XDR");
+        }
+
+        // Submit the XDR
+        await submitXDRMutation.mutateAsync({ xdr });
+      }
+    } catch (error: any) {
+      console.error("Error calling contract function:", error);
+      setCallError(error.message || "Unknown error occurred");
+      toast.error(`Error: ${error.message || "Failed to call function"}`);
+    } finally {
+      setIsCalling(false);
     }
   };
 
@@ -756,10 +928,42 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
                             ?.parameters.length === 0 && "mt-2"
                         )}
                         size="sm"
-                        disabled={Object.keys(paramErrors).length > 0}
+                        disabled={Object.keys(paramErrors).length > 0 || isCalling}
+                        onClick={executeContractCall}
                       >
-                        {isReadOnlyFunction(selectedFunction) ? "Query Function" : "Call Function"}
+                        {isCalling ? (
+                          <div className="flex items-center justify-center">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            {isReadOnlyFunction(selectedFunction) ? "Querying..." : "Submitting..."}
+                          </div>
+                        ) : (
+                          isReadOnlyFunction(selectedFunction) ? "Query Function" : "Call Function"
+                        )}
                       </Button>
+
+                      {callResult && (
+                        <div className="mt-4 rounded-md bg-gray-50 p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-xs font-medium text-gray-700">Result</h4>
+                            <button
+                              onClick={() => copyToClipboard(callResult)}
+                              className="text-xs text-gray-500 hover:text-gray-700"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <pre className="text-xs font-mono bg-white rounded border border-gray-100 p-2 overflow-x-auto">
+                            {callResult}
+                          </pre>
+                        </div>
+                      )}
+
+                      {callError && (
+                        <div className="mt-4 rounded-md bg-red-50 p-3">
+                          <h4 className="text-xs font-medium text-red-700 mb-1">Error</h4>
+                          <p className="text-xs text-red-600">{callError}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
