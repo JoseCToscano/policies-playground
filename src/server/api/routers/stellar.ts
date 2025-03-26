@@ -4,32 +4,12 @@ import { z } from "zod";
 import { Sep10 } from "~/server/services/Sep10";
 import { handleHorizonServerError } from "~/lib/utils";
 import { account, server } from "~/lib/utils";
-import { Asset, rpc, contract, Address, xdr, Soroban, } from "@stellar/stellar-sdk";
+import { Asset, rpc, contract, Address, xdr, Soroban } from "@stellar/stellar-sdk";
+import { ContractFunction, ContractFunctionParam, ContractMetadata } from "~/types/contracts";
+import { SAC_FUNCTIONS } from "~/lib/constants/sac";
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
-
-// Contract function parameter type
-interface ContractFunctionParam {
-  name: string;
-  type: string;
-}
-
-// Contract function type
-interface ContractFunction {
-  name: string;
-  parameters: ContractFunctionParam[];
-}
-
-// Contract metadata type
-interface ContractMetadata {
-  name?: string;
-  symbol?: string;
-  decimals?: number;
-  totalSupply?: string;
-  version?: string;
-  functions: ContractFunction[];
-}
 
 // Helper function to parse XDR type definitions
 function parseXdrType(type: xdr.ScSpecTypeDef): string {
@@ -136,96 +116,14 @@ export const stellarRouter = createTRPCRouter({
           // Get the Stellar Asset Contract ID
           const contractId = await asset.contractId(passphrase);
 
-          // For Asset Contracts, we know the standard interface
+          // For Asset Contracts, we use the standard interface
           const metadata: ContractMetadata = {
             name: code,
             symbol: code,
             decimals: 7, // Standard for Stellar assets
             totalSupply: "0", // We could fetch this if needed
             version: "1",
-            functions: [
-              {
-                name: "transfer",
-                parameters: [
-                  { name: "to", type: "address" },
-                  { name: "amount", type: "i128" }
-                ]
-              },
-              {
-                name: "burn",
-                parameters: [
-                  { name: "amount", type: "i128" }
-                ]
-              },
-              {
-                name: "mint",
-                parameters: [
-                  { name: "to", type: "address" },
-                  { name: "amount", type: "i128" }
-                ]
-              },
-              {
-                name: "transfer_from",
-                parameters: [
-                  { name: "from", type: "address" },
-                  { name: "to", type: "address" },
-                  { name: "amount", type: "i128" }
-                ]
-              },
-              {
-                name: "set_admin",
-                parameters: [
-                  { name: "new_admin", type: "address" }
-                ]
-              },
-              {
-                name: "approve",
-                parameters: [
-                  { name: "spender", type: "address" },
-                  { name: "amount", type: "i128" }
-                ]
-              },
-              {
-                name: "upgrade",
-                parameters: [
-                  { name: "new_wasm_hash", type: "bytes" }
-                ]
-              },
-              {
-                name: "init",
-                parameters: [
-                  { name: "admin", type: "address" },
-                  { name: "decimal", type: "u32" },
-                  { name: "name", type: "string" },
-                  { name: "symbol", type: "string" }
-                ]
-              },
-              {
-                name: "balance",
-                parameters: [
-                  { name: "id", type: "address" }
-                ]
-              },
-              {
-                name: "allowance",
-                parameters: [
-                  { name: "from", type: "address" },
-                  { name: "spender", type: "address" }
-                ]
-              },
-              {
-                name: "decimals",
-                parameters: []
-              },
-              {
-                name: "name",
-                parameters: []
-              },
-              {
-                name: "symbol",
-                parameters: []
-              }
-            ]
+            functions: SAC_FUNCTIONS
           };
 
           return metadata;
