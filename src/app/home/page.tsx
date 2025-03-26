@@ -97,6 +97,42 @@ type StoredPolicies = {
   [walletId: string]: Policy[];
 }
 
+interface EnumVariant {
+  name: string;
+  value: number;
+  doc?: string;
+}
+
+interface ContractEnum {
+  name: string;
+  isErrorEnum?: boolean;
+  doc?: string;
+  variants: EnumVariant[];
+}
+
+interface UnionCase {
+  name: string;
+  type?: string;
+  doc?: string;
+}
+
+interface ContractUnion {
+  name: string;
+  doc?: string;
+  cases: UnionCase[];
+}
+
+interface ContractMetadata {
+  name?: string;
+  symbol?: string;
+  decimals?: number;
+  totalSupply?: string;
+  version?: string;
+  functions: any[];
+  enums?: ContractEnum[];
+  unions?: ContractUnion[];
+}
+
 interface ContractFunction {
   name: string;
   parameters: Array<{
@@ -341,8 +377,10 @@ const getPlaceholder = (type: string): string => {
 const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?: string }) => {
   const [contractAddress, setContractAddress] = useState("");
   const [loading, setLoading] = useState(false);
-  const [metadata, setMetadata] = useState<any>(null);
+  const [metadata, setMetadata] = useState<ContractMetadata | null>(null);
   const [selectedFunction, setSelectedFunction] = useState<string | null>(null);
+  const [selectedEnum, setSelectedEnum] = useState<string | null>(null);
+  const [selectedUnion, setSelectedUnion] = useState<string | null>(null);
   const [functionParams, setFunctionParams] = useState<Record<string, string>>({});
   const [paramErrors, setParamErrors] = useState<Record<string, string>>({});
 
@@ -466,256 +504,108 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
           )}
 
           {metadata && (
-            <div className="grid grid-cols-2 gap-4">
-              {/* Left Column: Contract Info & Functions */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  {metadata.name && (
-                    <div>
-                      <Label className="text-xs font-medium">Name</Label>
-                      <div className="mt-1.5 text-sm">{metadata.name}</div>
-                    </div>
-                  )}
-                  {metadata.symbol && (
-                    <div>
-                      <Label className="text-xs font-medium">Symbol</Label>
-                      <div className="mt-1.5 text-sm">{metadata.symbol}</div>
-                    </div>
-                  )}
-                  {metadata.decimals !== undefined && (
-                    <div>
-                      <Label className="text-xs font-medium">Decimals</Label>
-                      <div className="mt-1.5 text-sm">{metadata.decimals}</div>
-                    </div>
-                  )}
-                  {metadata.totalSupply && (
-                    <div>
-                      <Label className="text-xs font-medium">Total Supply</Label>
-                      <div className="mt-1.5 text-sm">{metadata.totalSupply}</div>
-                    </div>
-                  )}
-                  {metadata.version && (
-                    <div>
-                      <Label className="text-xs font-medium">Version</Label>
-                      <div className="mt-1.5 text-sm">{metadata.version}</div>
-                    </div>
-                  )}
-                </div>
-
-                {metadata.functions.length > 0 && (
-                  <div>
-                    <Label className="text-xs font-medium">Available Functions</Label>
-                    <div className="mt-1.5 max-h-[300px] overflow-y-auto rounded-md border">
-                      {metadata.functions.map((fn: any) => (
-                        <TooltipProvider key={fn.name}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                onClick={() => handleFunctionSelect(fn.name)}
-                                onKeyDown={(e) => handleKeyDown(e, fn.name)}
-                                className={cn(
-                                  "w-full border-b p-3 text-left transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-                                  selectedFunction === fn.name && "bg-muted",
-                                  "last:border-b-0",
-                                  isReadOnlyFunction(fn.name) ? "hover:bg-blue-50" : "hover:bg-orange-50"
-                                )}
-                                tabIndex={0}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono text-sm">{fn.name}</span>
-                                    <Badge
-                                      variant={isReadOnlyFunction(fn.name) ? "secondary" : "outline"}
-                                      className={cn(
-                                        "text-[10px] px-1 py-0 h-4",
-                                        isReadOnlyFunction(fn.name)
-                                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                                          : "bg-orange-50 text-orange-700 border-orange-200"
-                                      )}
-                                    >
-                                      {isReadOnlyFunction(fn.name) ? "read" : "write"}
-                                    </Badge>
-                                  </div>
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                                    {fn.parameters.length} params
-                                  </Badge>
-                                </div>
-                                {fn.parameters.length > 0 && (
-                                  <div className="mt-2 space-y-1">
-                                    {fn.parameters.map((param: any) => (
-                                      <div key={param.name} className="flex items-center gap-2 text-xs">
-                                        <Badge
-                                          variant="outline"
-                                          className={cn(
-                                            "font-mono text-[10px]",
-                                            param.type === 'address' && "bg-purple-50 border-purple-200 text-purple-700",
-                                            param.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
-                                            param.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
-                                          )}
-                                        >
-                                          {param.type}
-                                        </Badge>
-                                        <span className="font-mono text-muted-foreground">
-                                          {param.name}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-[300px]">
-                              <p className="text-xs">{SAC_FUNCTION_DOCS[fn.name]}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Right Column: Function Parameters & Execution */}
+            <div className="grid grid-cols-[300px_1fr] gap-4">
+              {/* Left Column: Tabs with Lists */}
               <div className="space-y-4">
                 <div className="border rounded-md">
                   <Tabs defaultValue="functions" className="w-full">
                     <TabsList className="w-full grid grid-cols-3">
                       <TabsTrigger value="functions">Functions</TabsTrigger>
                       <TabsTrigger value="enums">Enums</TabsTrigger>
-                      <TabsTrigger value="unions">Unions & Structs</TabsTrigger>
+                      <TabsTrigger value="unions">Unions</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="functions" className="p-4 space-y-4">
-                      {selectedFunction ? (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label className="text-xs font-medium">Function Parameters</Label>
-                              <p className="text-xs text-muted-foreground">
-                                {metadata.functions
-                                  .find((fn: any) => fn.name === selectedFunction)
-                                  ?.parameters.length === 0
-                                  ? "This function doesn't require any parameters"
-                                  : `Enter parameters for ${selectedFunction}`}
-                              </p>
-                            </div>
-                            <Badge
-                              variant={isReadOnlyFunction(selectedFunction) ? "secondary" : "outline"}
-                              className={cn(
-                                "text-xs",
-                                isReadOnlyFunction(selectedFunction)
-                                  ? "bg-blue-50 text-blue-700 border-blue-200"
-                                  : "bg-orange-50 text-orange-700 border-orange-200"
-                              )}
-                            >
-                              {isReadOnlyFunction(selectedFunction) ? "Read-Only" : "Write"}
-                            </Badge>
-                          </div>
-
-                          <div className="space-y-3">
-                            {metadata.functions
-                              .find((fn: any) => fn.name === selectedFunction)
-                              ?.parameters.length === 0 ? (
-                              <div className="flex flex-col items-center justify-center py-6 px-4 border rounded-md bg-gray-50/50">
-                                <Terminal className="h-8 w-8 text-gray-400 mb-3" />
-                                <p className="text-sm text-center text-muted-foreground mb-1">
-                                  Ready to query {selectedFunction}()
-                                </p>
-                                <p className="text-xs text-center text-muted-foreground">
-                                  This is a direct call that returns {selectedFunction === 'decimals' ? 'a number' : 'a string'}
-                                </p>
-                              </div>
-                            ) : (
-                              metadata.functions
-                                .find((fn: any) => fn.name === selectedFunction)
-                                ?.parameters.map((param: any) => (
-                                  <div key={param.name} className="space-y-1.5">
-                                    <Label className="text-xs flex items-center justify-between">
-                                      <span className="font-mono">{param.name}</span>
+                    <TabsContent value="functions" className="border-t">
+                      <div className="max-h-[500px] overflow-y-auto">
+                        {metadata.functions.map((fn: any) => (
+                          <TooltipProvider key={fn.name}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => {
+                                    handleFunctionSelect(fn.name);
+                                    setSelectedEnum(null);
+                                    setSelectedUnion(null);
+                                  }}
+                                  onKeyDown={(e) => handleKeyDown(e, fn.name)}
+                                  className={cn(
+                                    "w-full border-b p-3 text-left transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                                    selectedFunction === fn.name && "bg-muted",
+                                    "last:border-b-0",
+                                    isReadOnlyFunction(fn.name) ? "hover:bg-blue-50" : "hover:bg-orange-50"
+                                  )}
+                                  tabIndex={0}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-sm">{fn.name}</span>
                                       <Badge
-                                        variant="outline"
+                                        variant={isReadOnlyFunction(fn.name) ? "secondary" : "outline"}
                                         className={cn(
-                                          "font-mono text-[10px]",
-                                          param.type === 'address' && "bg-purple-50 border-purple-200 text-purple-700",
-                                          param.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
-                                          param.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                          "text-[10px] px-1 py-0 h-4",
+                                          isReadOnlyFunction(fn.name)
+                                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                                            : "bg-orange-50 text-orange-700 border-orange-200"
                                         )}
                                       >
-                                        {param.type}
+                                        {isReadOnlyFunction(fn.name) ? "read" : "write"}
                                       </Badge>
-                                    </Label>
-                                    <div className="relative">
-                                      <Input
-                                        value={functionParams[param.name] || ""}
-                                        onChange={(e) => {
-                                          const value = e.target.value;
-                                          setFunctionParams((prev) => ({
-                                            ...prev,
-                                            [param.name]: value,
-                                          }));
-
-                                          // Validate input
-                                          if (!validateParam(value, param.type)) {
-                                            setParamErrors((prev) => ({
-                                              ...prev,
-                                              [param.name]: `Invalid ${param.type} value`,
-                                            }));
-                                          } else {
-                                            setParamErrors((prev) => {
-                                              const { [param.name]: _, ...rest } = prev;
-                                              return rest;
-                                            });
-                                          }
-                                        }}
-                                        placeholder={getPlaceholder(param.type)}
-                                        className={cn(
-                                          "font-mono text-sm h-9",
-                                          paramErrors[param.name] && "border-red-500"
-                                        )}
-                                      />
-                                      {paramErrors[param.name] && (
-                                        <span className="absolute -bottom-4 left-0 text-xs text-red-500">
-                                          {paramErrors[param.name]}
-                                        </span>
-                                      )}
                                     </div>
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                                      {fn.parameters.length} params
+                                    </Badge>
                                   </div>
-                                ))
-                            )}
-
-                            <Button
-                              className={cn(
-                                "w-full",
-                                isReadOnlyFunction(selectedFunction) ? "bg-blue-600 hover:bg-blue-700" : "",
-                                metadata.functions
-                                  .find((fn: any) => fn.name === selectedFunction)
-                                  ?.parameters.length === 0 && "mt-2"
-                              )}
-                              size="sm"
-                              disabled={Object.keys(paramErrors).length > 0}
-                            >
-                              {isReadOnlyFunction(selectedFunction) ? "Query Function" : "Call Function"}
-                            </Button>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex h-[300px] items-center justify-center text-center">
-                          <div className="space-y-2 max-w-[200px]">
-                            <FileText className="h-8 w-8 mx-auto text-gray-400" />
-                            <p className="text-sm text-muted-foreground">
-                              Select a function from the list to view its parameters
-                            </p>
-                          </div>
-                        </div>
-                      )}
+                                  {fn.parameters.length > 0 && (
+                                    <div className="mt-2 space-y-1">
+                                      {fn.parameters.map((param: any) => (
+                                        <div key={param.name} className="flex items-center gap-2 text-xs">
+                                          <Badge
+                                            variant="outline"
+                                            className={cn(
+                                              "font-mono text-[10px]",
+                                              param.type === 'address' && "bg-purple-50 border-purple-200 text-purple-700",
+                                              param.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
+                                              param.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                            )}
+                                          >
+                                            {param.type}
+                                          </Badge>
+                                          <span className="font-mono text-muted-foreground">
+                                            {param.name}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-[300px]">
+                                <p className="text-xs">{SAC_FUNCTION_DOCS[fn.name]}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ))}
+                      </div>
                     </TabsContent>
 
-                    <TabsContent value="enums" className="p-4 space-y-4">
-                      {metadata.enums?.length ? (
-                        metadata.enums.map((enum_: any) => (
-                          <div key={enum_.name} className="space-y-2">
+                    <TabsContent value="enums" className="border-t">
+                      <div className="max-h-[500px] overflow-y-auto">
+                        {metadata.enums?.map((enum_: any) => (
+                          <button
+                            key={enum_.name}
+                            onClick={() => {
+                              setSelectedFunction(null);
+                              setSelectedEnum(enum_.name);
+                              setSelectedUnion(null);
+                            }}
+                            className={cn(
+                              "w-full border-b p-3 text-left transition-colors hover:bg-muted",
+                              selectedEnum === enum_.name && "bg-muted",
+                              "last:border-b-0"
+                            )}
+                          >
                             <div className="flex items-center gap-2">
-                              <h4 className="font-mono text-sm">{enum_.name}</h4>
+                              <span className="font-mono text-sm">{enum_.name}</span>
                               {enum_.isErrorEnum && (
                                 <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
                                   error
@@ -723,71 +613,258 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
                               )}
                             </div>
                             {enum_.doc && (
-                              <p className="text-xs text-muted-foreground">{enum_.doc}</p>
+                              <p className="mt-1 text-xs text-muted-foreground truncate">{enum_.doc}</p>
                             )}
-                            <div className="space-y-1">
-                              {enum_.variants.map((variant: any) => (
-                                <div key={variant.name} className="flex items-center gap-2 text-xs">
-                                  <Badge variant="outline" className="font-mono">
-                                    {variant.value}
-                                  </Badge>
-                                  <span className="font-mono">{variant.name}</span>
-                                  {variant.doc && (
-                                    <span className="text-muted-foreground">- {variant.doc}</span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-4 text-sm text-muted-foreground">
-                          No enums found in contract
-                        </div>
-                      )}
+                          </button>
+                        ))}
+                      </div>
                     </TabsContent>
 
-                    <TabsContent value="unions" className="p-4 space-y-4">
-                      {metadata.unions?.length ? (
-                        metadata.unions.map((union: any) => (
-                          <div key={union.name} className="space-y-2">
-                            <h4 className="font-mono text-sm">{union.name}</h4>
-                            {union.doc && (
-                              <p className="text-xs text-muted-foreground">{union.doc}</p>
+                    <TabsContent value="unions" className="border-t">
+                      <div className="max-h-[500px] overflow-y-auto">
+                        {metadata.unions?.map((union: any) => (
+                          <button
+                            key={union.name}
+                            onClick={() => {
+                              setSelectedFunction(null);
+                              setSelectedEnum(null);
+                              setSelectedUnion(union.name);
+                            }}
+                            className={cn(
+                              "w-full border-b p-3 text-left transition-colors hover:bg-muted",
+                              selectedUnion === union.name && "bg-muted",
+                              "last:border-b-0"
                             )}
-                            <div className="space-y-1">
-                              {union.cases.map((case_: any) => (
-                                <div key={case_.name} className="flex items-center gap-2 text-xs">
-                                  <span className="font-mono">{case_.name}</span>
-                                  {case_.type && (
-                                    <Badge
-                                      variant="outline"
-                                      className={cn(
-                                        "font-mono",
-                                        case_.type.includes('address') && "bg-purple-50 border-purple-200 text-purple-700",
-                                        case_.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
-                                        case_.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
-                                      )}
-                                    >
-                                      {case_.type}
-                                    </Badge>
-                                  )}
-                                  {case_.doc && (
-                                    <span className="text-muted-foreground">- {case_.doc}</span>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-4 text-sm text-muted-foreground">
-                          No unions or structs found in contract
-                        </div>
-                      )}
+                          >
+                            <span className="font-mono text-sm">{union.name}</span>
+                            {union.doc && (
+                              <p className="mt-1 text-xs text-muted-foreground truncate">{union.doc}</p>
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     </TabsContent>
                   </Tabs>
                 </div>
+              </div>
+
+              {/* Right Column: Working Area */}
+              <div className="border rounded-md p-4">
+                {selectedFunction && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-xs font-medium">Function Parameters</Label>
+                        <p className="text-xs text-muted-foreground">
+                          {metadata.functions
+                            .find((fn: any) => fn.name === selectedFunction)
+                            ?.parameters.length === 0
+                            ? "This function doesn't require any parameters"
+                            : `Enter parameters for ${selectedFunction}`}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={isReadOnlyFunction(selectedFunction) ? "secondary" : "outline"}
+                        className={cn(
+                          "text-xs",
+                          isReadOnlyFunction(selectedFunction)
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-orange-50 text-orange-700 border-orange-200"
+                        )}
+                      >
+                        {isReadOnlyFunction(selectedFunction) ? "Read-Only" : "Write"}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-3">
+                      {metadata.functions
+                        .find((fn: any) => fn.name === selectedFunction)
+                        ?.parameters.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-6 px-4 border rounded-md bg-gray-50/50">
+                          <Terminal className="h-8 w-8 text-gray-400 mb-3" />
+                          <p className="text-sm text-center text-muted-foreground mb-1">
+                            Ready to query {selectedFunction}()
+                          </p>
+                          <p className="text-xs text-center text-muted-foreground">
+                            This is a direct call that returns {selectedFunction === 'decimals' ? 'a number' : 'a string'}
+                          </p>
+                        </div>
+                      ) : (
+                        metadata.functions
+                          .find((fn: any) => fn.name === selectedFunction)
+                          ?.parameters.map((param: any) => (
+                            <div key={param.name} className="space-y-1.5">
+                              <Label className="text-xs flex items-center justify-between">
+                                <span className="font-mono">{param.name}</span>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "font-mono text-[10px]",
+                                    param.type === 'address' && "bg-purple-50 border-purple-200 text-purple-700",
+                                    param.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
+                                    param.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                  )}
+                                >
+                                  {param.type}
+                                </Badge>
+                              </Label>
+                              <div className="relative">
+                                <Input
+                                  value={functionParams[param.name] || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setFunctionParams((prev) => ({
+                                      ...prev,
+                                      [param.name]: value,
+                                    }));
+
+                                    // Validate input
+                                    if (!validateParam(value, param.type)) {
+                                      setParamErrors((prev) => ({
+                                        ...prev,
+                                        [param.name]: `Invalid ${param.type} value`,
+                                      }));
+                                    } else {
+                                      setParamErrors((prev) => {
+                                        const { [param.name]: _, ...rest } = prev;
+                                        return rest;
+                                      });
+                                    }
+                                  }}
+                                  placeholder={getPlaceholder(param.type)}
+                                  className={cn(
+                                    "font-mono text-sm h-9",
+                                    paramErrors[param.name] && "border-red-500"
+                                  )}
+                                />
+                                {paramErrors[param.name] && (
+                                  <span className="absolute -bottom-4 left-0 text-xs text-red-500">
+                                    {paramErrors[param.name]}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                      )}
+
+                      <Button
+                        className={cn(
+                          "w-full",
+                          isReadOnlyFunction(selectedFunction) ? "bg-blue-600 hover:bg-blue-700" : "",
+                          metadata.functions
+                            .find((fn: any) => fn.name === selectedFunction)
+                            ?.parameters.length === 0 && "mt-2"
+                        )}
+                        size="sm"
+                        disabled={Object.keys(paramErrors).length > 0}
+                      >
+                        {isReadOnlyFunction(selectedFunction) ? "Query Function" : "Call Function"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {selectedEnum && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-xs font-medium">Enum Definition</Label>
+                        <p className="text-xs text-muted-foreground">
+                          View the variants and documentation for this enum
+                        </p>
+                      </div>
+                      {metadata.enums?.find(e => e.name === selectedEnum)?.isErrorEnum && (
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                          error enum
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      {metadata.enums?.find(e => e.name === selectedEnum)?.doc && (
+                        <div className="rounded-md bg-muted/50 p-3">
+                          <p className="text-sm">
+                            {metadata.enums?.find(e => e.name === selectedEnum)?.doc}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        {metadata.enums?.find(e => e.name === selectedEnum)?.variants.map((variant: any) => (
+                          <div key={variant.name} className="flex items-start gap-3 p-2 rounded-md border">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="font-mono">
+                                {variant.value}
+                              </Badge>
+                              <span className="font-mono text-sm">{variant.name}</span>
+                            </div>
+                            {variant.doc && (
+                              <p className="text-sm text-muted-foreground flex-1">{variant.doc}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedUnion && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-xs font-medium">Union Definition</Label>
+                      <p className="text-xs text-muted-foreground">
+                        View the cases and documentation for this union
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {metadata.unions?.find(u => u.name === selectedUnion)?.doc && (
+                        <div className="rounded-md bg-muted/50 p-3">
+                          <p className="text-sm">
+                            {metadata.unions?.find(u => u.name === selectedUnion)?.doc}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        {metadata.unions?.find(u => u.name === selectedUnion)?.cases.map((case_: any) => (
+                          <div key={case_.name} className="flex items-start gap-3 p-2 rounded-md border">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-sm">{case_.name}</span>
+                              {case_.type && (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "font-mono",
+                                    case_.type.includes('address') && "bg-purple-50 border-purple-200 text-purple-700",
+                                    case_.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
+                                    case_.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                  )}
+                                >
+                                  {case_.type}
+                                </Badge>
+                              )}
+                            </div>
+                            {case_.doc && (
+                              <p className="text-sm text-muted-foreground flex-1">{case_.doc}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!selectedFunction && !selectedEnum && !selectedUnion && (
+                  <div className="flex h-[400px] items-center justify-center text-center">
+                    <div className="space-y-2 max-w-[300px]">
+                      <FileText className="h-8 w-8 mx-auto text-gray-400" />
+                      <p className="text-sm text-muted-foreground">
+                        Select a function, enum, or union from the list to view its details
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
