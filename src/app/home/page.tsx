@@ -59,6 +59,13 @@ import { Label } from "~/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { cn } from '~/lib/utils'
 import { type RouterOutputs } from "~/utils/api";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip"
+import { SAC_FUNCTION_DOCS } from "~/lib/constants/sac";
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
@@ -296,12 +303,48 @@ const popularContracts: PopularContract[] = [
   }
 ];
 
+// Helper to determine if a function is read-only
+const isReadOnlyFunction = (name: string): boolean => {
+  return ['balance', 'allowance', 'decimals', 'name', 'symbol'].includes(name);
+};
+
+// Helper to validate parameter input based on type
+const validateParam = (value: string, type: string): boolean => {
+  switch (type) {
+    case 'address':
+      return value.length === 56; // Stellar address length
+    case 'i128':
+    case 'u128':
+      return !isNaN(Number(value)) && value !== '';
+    case 'u32':
+      return !isNaN(Number(value)) && Number(value) >= 0 && Number.isInteger(Number(value));
+    default:
+      return true;
+  }
+};
+
+// Helper to get placeholder for parameter type
+const getPlaceholder = (type: string): string => {
+  switch (type) {
+    case 'address':
+      return 'G... (56 characters)';
+    case 'i128':
+    case 'u128':
+      return '0';
+    case 'u32':
+      return '0 (positive integer)';
+    default:
+      return `Enter ${type}`;
+  }
+};
+
 const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?: string }) => {
   const [contractAddress, setContractAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [metadata, setMetadata] = useState<any>(null);
   const [selectedFunction, setSelectedFunction] = useState<string | null>(null);
   const [functionParams, setFunctionParams] = useState<Record<string, string>>({});
+  const [paramErrors, setParamErrors] = useState<Record<string, string>>({});
 
   const handleContractSelect = (contract: PopularContract) => {
     if (contract.address) {
@@ -464,38 +507,68 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
                     <Label className="text-xs font-medium">Available Functions</Label>
                     <div className="mt-1.5 max-h-[300px] overflow-y-auto rounded-md border">
                       {metadata.functions.map((fn: any) => (
-                        <button
-                          key={fn.name}
-                          onClick={() => handleFunctionSelect(fn.name)}
-                          onKeyDown={(e) => handleKeyDown(e, fn.name)}
-                          className={cn(
-                            "w-full border-b p-3 text-left transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-                            selectedFunction === fn.name && "bg-muted",
-                            "last:border-b-0"
-                          )}
-                          tabIndex={0}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono text-sm">{fn.name}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {fn.parameters.length} params
-                            </Badge>
-                          </div>
-                          {fn.parameters.length > 0 && (
-                            <div className="mt-2 space-y-1">
-                              {fn.parameters.map((param: any) => (
-                                <div key={param.name} className="flex items-center gap-2 text-xs">
-                                  <Badge variant="outline" className="font-mono">
-                                    {param.type}
+                        <TooltipProvider key={fn.name}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={() => handleFunctionSelect(fn.name)}
+                                onKeyDown={(e) => handleKeyDown(e, fn.name)}
+                                className={cn(
+                                  "w-full border-b p-3 text-left transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                                  selectedFunction === fn.name && "bg-muted",
+                                  "last:border-b-0",
+                                  isReadOnlyFunction(fn.name) ? "hover:bg-blue-50" : "hover:bg-orange-50"
+                                )}
+                                tabIndex={0}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-sm">{fn.name}</span>
+                                    <Badge
+                                      variant={isReadOnlyFunction(fn.name) ? "secondary" : "outline"}
+                                      className={cn(
+                                        "text-[10px] px-1 py-0 h-4",
+                                        isReadOnlyFunction(fn.name)
+                                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                                          : "bg-orange-50 text-orange-700 border-orange-200"
+                                      )}
+                                    >
+                                      {isReadOnlyFunction(fn.name) ? "read" : "write"}
+                                    </Badge>
+                                  </div>
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                                    {fn.parameters.length} params
                                   </Badge>
-                                  <span className="font-mono text-muted-foreground">
-                                    {param.name}
-                                  </span>
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                        </button>
+                                {fn.parameters.length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    {fn.parameters.map((param: any) => (
+                                      <div key={param.name} className="flex items-center gap-2 text-xs">
+                                        <Badge
+                                          variant="outline"
+                                          className={cn(
+                                            "font-mono text-[10px]",
+                                            param.type === 'address' && "bg-purple-50 border-purple-200 text-purple-700",
+                                            param.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
+                                            param.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                          )}
+                                        >
+                                          {param.type}
+                                        </Badge>
+                                        <span className="font-mono text-muted-foreground">
+                                          {param.name}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-[300px]">
+                              <p className="text-xs">{SAC_FUNCTION_DOCS[fn.name]}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       ))}
                     </div>
                   </div>
@@ -506,11 +579,24 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
               <div className="space-y-4">
                 {selectedFunction && (
                   <>
-                    <div>
-                      <Label className="text-xs font-medium">Function Parameters</Label>
-                      <p className="text-xs text-muted-foreground">
-                        Enter parameters for {selectedFunction}
-                      </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-xs font-medium">Function Parameters</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Enter parameters for {selectedFunction}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={isReadOnlyFunction(selectedFunction) ? "secondary" : "outline"}
+                        className={cn(
+                          "text-xs",
+                          isReadOnlyFunction(selectedFunction)
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-orange-50 text-orange-700 border-orange-200"
+                        )}
+                      >
+                        {isReadOnlyFunction(selectedFunction) ? "Read-Only" : "Write"}
+                      </Badge>
                     </div>
 
                     <div className="space-y-3">
@@ -519,37 +605,79 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
                         ?.parameters.map((param: any) => (
                           <div key={param.name} className="space-y-1.5">
                             <Label className="text-xs flex items-center justify-between">
-                              {param.name}
-                              <Badge variant="outline" className="font-mono text-[10px]">
+                              <span className="font-mono">{param.name}</span>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "font-mono text-[10px]",
+                                  param.type === 'address' && "bg-purple-50 border-purple-200 text-purple-700",
+                                  param.type.startsWith('i') && "bg-green-50 border-green-200 text-green-700",
+                                  param.type.startsWith('u') && "bg-yellow-50 border-yellow-200 text-yellow-700"
+                                )}
+                              >
                                 {param.type}
                               </Badge>
                             </Label>
-                            <Input
-                              value={functionParams[param.name] || ""}
-                              onChange={(e) =>
-                                setFunctionParams((prev) => ({
-                                  ...prev,
-                                  [param.name]: e.target.value,
-                                }))
-                              }
-                              placeholder={`Enter ${param.type}`}
-                              className="font-mono text-sm h-9"
-                            />
+                            <div className="relative">
+                              <Input
+                                value={functionParams[param.name] || ""}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setFunctionParams((prev) => ({
+                                    ...prev,
+                                    [param.name]: value,
+                                  }));
+
+                                  // Validate input
+                                  if (!validateParam(value, param.type)) {
+                                    setParamErrors((prev) => ({
+                                      ...prev,
+                                      [param.name]: `Invalid ${param.type} value`,
+                                    }));
+                                  } else {
+                                    setParamErrors((prev) => {
+                                      const { [param.name]: _, ...rest } = prev;
+                                      return rest;
+                                    });
+                                  }
+                                }}
+                                placeholder={getPlaceholder(param.type)}
+                                className={cn(
+                                  "font-mono text-sm h-9",
+                                  paramErrors[param.name] && "border-red-500"
+                                )}
+                              />
+                              {paramErrors[param.name] && (
+                                <span className="absolute -bottom-4 left-0 text-xs text-red-500">
+                                  {paramErrors[param.name]}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ))}
 
-                      <Button className="w-full" size="sm">
-                        Call Function
+                      <Button
+                        className={cn(
+                          "w-full",
+                          isReadOnlyFunction(selectedFunction) ? "bg-blue-600 hover:bg-blue-700" : ""
+                        )}
+                        size="sm"
+                        disabled={Object.keys(paramErrors).length > 0}
+                      >
+                        {isReadOnlyFunction(selectedFunction) ? "Query Function" : "Call Function"}
                       </Button>
                     </div>
                   </>
                 )}
 
                 {!selectedFunction && metadata.functions.length > 0 && (
-                  <div className="flex h-full items-center justify-center text-center">
-                    <p className="text-sm text-muted-foreground">
-                      Select a function to view its parameters
-                    </p>
+                  <div className="flex h-[300px] items-center justify-center text-center border rounded-md">
+                    <div className="space-y-2 max-w-[200px]">
+                      <FileText className="h-8 w-8 mx-auto text-gray-400" />
+                      <p className="text-sm text-muted-foreground">
+                        Select a function from the list to view its parameters
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
