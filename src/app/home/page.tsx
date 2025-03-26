@@ -29,7 +29,9 @@ import {
   ArrowRightLeft,
   Trash2,
   FileText,
-  Code2
+  Code2,
+  CircleDollarSign,
+  EuroIcon
 } from "lucide-react"
 import { SignersActions } from '../_components/signers-actions'
 import { Keypair } from '@stellar/stellar-sdk'
@@ -53,6 +55,7 @@ import {
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { cn } from '~/lib/utils'
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
@@ -89,7 +92,6 @@ function SignerModal({ signer, policies, onClose }: {
   policies: Policy[],
   onClose: () => void
 }) {
-  const [selectedTab, setSelectedTab] = useState("general");
   const [attachedPolicies, setAttachedPolicies] = useState<Policy[]>([]);
 
   useEffect(() => {
@@ -98,46 +100,48 @@ function SignerModal({ signer, policies, onClose }: {
   }, [signer]);
 
   return (
-    <DialogContent className="max-w-2xl">
-      <DialogHeader>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-            <span className="text-sm font-medium text-gray-600">
-              {signer.name.charAt(0).toUpperCase()}
-            </span>
-          </div>
-          <div>
-            <DialogTitle className="text-xl font-semibold">{signer.name}</DialogTitle>
-            <DialogDescription className="flex items-center gap-2">
-              <Badge className="bg-gray-100 text-xs font-normal text-gray-600">
-                {signer.purpose}
-              </Badge>
-              <span className="text-sm text-gray-500">{shortAddress(signer.publicKey)}</span>
-              <button
-                onClick={() => copyToClipboard(signer.publicKey)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-            </DialogDescription>
-          </div>
-        </div>
-      </DialogHeader>
+    <DialogContent className="max-w-4xl p-0 gap-0">
+      <div className="grid grid-cols-[1fr_300px]">
+        {/* Main Content */}
+        <div className="p-6">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                <span className="text-sm font-medium text-gray-600">
+                  {signer.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+                  {signer.name}
+                  <Badge className="bg-gray-100 text-xs font-normal text-gray-600">
+                    {signer.purpose}
+                  </Badge>
+                </DialogTitle>
+                <DialogDescription className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">{shortAddress(signer.publicKey)}</span>
+                  <button
+                    onClick={() => copyToClipboard(signer.publicKey)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
 
-      <Tabs defaultValue="general" className="mt-6" onValueChange={setSelectedTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="policies">Policies</TabsTrigger>
-          <TabsTrigger value="sharing">Sharing</TabsTrigger>
-          <TabsTrigger value="advanced">Advanced</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="space-y-4 mt-4">
-          <div className="grid gap-4">
-            <div className="space-y-2">
-              <Label>Public Key</Label>
+          <div className="mt-6 space-y-6">
+            {/* Destination URL Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-gray-900">Destination URL</Label>
+                <Badge variant="outline" className="text-xs font-normal">
+                  PRO
+                </Badge>
+              </div>
               <div className="flex gap-2">
-                <Input value={signer.publicKey} readOnly />
+                <Input value={signer.publicKey} readOnly className="font-mono text-sm" />
                 <Button
                   variant="outline"
                   size="icon"
@@ -147,106 +151,285 @@ function SignerModal({ signer, policies, onClose }: {
                 </Button>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Added On</Label>
-              <Input value={new Date(signer.addedAt).toLocaleDateString()} readOnly />
-            </div>
-            <div className="space-y-2">
-              <Label>Purpose</Label>
-              <Input value={signer.purpose} readOnly />
-            </div>
-          </div>
-        </TabsContent>
 
-        <TabsContent value="policies" className="mt-4">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium text-gray-900">Attached Policies</h4>
-              <Button variant="outline" size="sm" onClick={() => { }}>
-                <Plus className="h-4 w-4 mr-2" />
-                Attach Policy
-              </Button>
-            </div>
-
-            {attachedPolicies.length === 0 ? (
-              <div className="rounded-md border border-dashed border-gray-200 p-4 text-center">
-                <p className="text-sm text-gray-500">No policies attached to this signer</p>
-                <Button variant="outline" size="sm" className="mt-2" onClick={() => { }}>
+            {/* Policies Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium text-gray-900 block">Attached Policies</Label>
+                  <p className="text-sm text-gray-500 mt-1">Manage policies that control this signer's permissions</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => { }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Attach Policy
                 </Button>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {attachedPolicies.map((policy) => (
-                  <div
-                    key={policy.id}
-                    className="flex items-center justify-between rounded-md border border-gray-100 bg-gray-50 p-3"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white">
-                        <FileText className="h-4 w-4 text-gray-500" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-900">{policy.name}</h4>
-                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                          <span>{shortAddress(policy.content)}</span>
-                          <button
-                            onClick={() => copyToClipboard(policy.content)}
-                            className="text-gray-400 hover:text-gray-600"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
+
+              {attachedPolicies.length === 0 ? (
+                <div className="rounded-md border border-dashed border-gray-200 p-8 text-center">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                    <FileText className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <h3 className="text-sm font-medium text-gray-900 mb-1">No policies attached</h3>
+                  <p className="text-sm text-gray-500 mb-4">Add policies to control this signer's permissions</p>
+                  <Button variant="outline" size="sm" onClick={() => { }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Attach Policy
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {attachedPolicies.map((policy) => (
+                    <div
+                      key={policy.id}
+                      className="flex items-center justify-between rounded-md border border-gray-100 bg-gray-50 p-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white">
+                          <FileText className="h-5 w-5 text-gray-500" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900">{policy.name}</h4>
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <span>{shortAddress(policy.content)}</span>
+                            <button
+                              onClick={() => copyToClipboard(policy.content)}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">{policy.description}</p>
                         </div>
                       </div>
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="sharing" className="mt-4">
-          <div className="space-y-4">
-            <div className="rounded-lg border border-gray-100 p-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Share Access</h4>
-              <p className="text-sm text-gray-500 mb-4">Generate a link to share this signer's access</p>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1">
-                  <QrCode className="h-4 w-4 mr-2" />
-                  Show QR Code
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Copy Link
-                </Button>
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="advanced" className="mt-4">
+        {/* Right Panel */}
+        <div className="border-l border-gray-100 p-6 space-y-6 bg-gray-50">
+          {/* Quick Actions */}
           <div className="space-y-4">
-            <div className="rounded-lg border border-gray-100 p-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Danger Zone</h4>
-              <p className="text-sm text-gray-500 mb-4">These actions cannot be undone</p>
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full text-red-600 hover:text-red-700">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Remove Signer
-                </Button>
-              </div>
+            <h4 className="text-sm font-medium text-gray-900">Quick Actions</h4>
+            <div className="grid gap-2">
+              <Button variant="outline" className="w-full justify-start">
+                <QrCode className="h-4 w-4 mr-2" />
+                QR Code
+              </Button>
+              <Button variant="outline" className="w-full justify-start">
+                <Share2 className="h-4 w-4 mr-2" />
+                Share
+              </Button>
+              <Button variant="outline" className="w-full justify-start">
+                <ArrowRightLeft className="h-4 w-4 mr-2" />
+                Transfer
+              </Button>
             </div>
           </div>
-        </TabsContent>
-      </Tabs>
+
+          {/* Danger Zone */}
+          <div className="pt-6 border-t border-gray-200">
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-red-600">Danger Zone</h4>
+              <p className="text-xs text-gray-500">These actions cannot be undone</p>
+              <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700 border-red-200">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remove Signer
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
     </DialogContent>
   );
 }
+
+interface PopularContract {
+  name: string;
+  description: string;
+  address: string;
+  icon: React.ReactNode;
+}
+
+const popularContracts: PopularContract[] = [
+  {
+    name: "USDC Token",
+    description: "Circle's USD Coin on Stellar",
+    address: "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+    icon: <CircleDollarSign className="h-3.5 w-3.5" />
+  },
+  {
+    name: "EURC Token",
+    description: "Circle's Euro Coin on Stellar",
+    address: "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO",
+    icon: <EuroIcon className="h-3.5 w-3.5" />
+  }
+];
+
+const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?: string }) => {
+  const [contractAddress, setContractAddress] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [metadata, setMetadata] = useState<any>(null);
+
+  const handleContractSelect = (contract: PopularContract) => {
+    if (contract.address) {
+      setContractAddress(contract.address);
+    }
+  };
+
+  const { data: contractMetadata, isLoading: isLoadingMetadata } = api.stellar.getContractMetadata.useQuery(
+    { contractAddress },
+    { enabled: contractAddress.length > 0 }
+  );
+
+  useEffect(() => {
+    if (contractMetadata) {
+      setMetadata(contractMetadata);
+    }
+  }, [contractMetadata]);
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base font-medium">Test Contract Call</CardTitle>
+            <CardDescription className="text-sm text-muted-foreground">
+              Test smart contract functions with any signer
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-xs font-medium">Popular Contracts</Label>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
+              {popularContracts.map((contract) => (
+                <button
+                  key={contract.address}
+                  onClick={() => handleContractSelect(contract)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md border p-2 text-left transition-colors hover:bg-muted",
+                    contractAddress === contract.address && "border-primary bg-muted"
+                  )}
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-background">
+                    {contract.icon}
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <div className="truncate text-sm font-medium">{contract.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {contract.description}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs font-medium">Contract Address</Label>
+            <div className="mt-1.5 flex items-center gap-2">
+              <Input
+                value={contractAddress}
+                onChange={(e) => setContractAddress(e.target.value)}
+                className="font-mono text-sm"
+                placeholder="Enter contract address"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  navigator.clipboard.writeText(contractAddress);
+                }}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {isLoadingMetadata && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {metadata && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {metadata.name && (
+                  <div>
+                    <Label className="text-xs font-medium">Name</Label>
+                    <div className="mt-1.5 text-sm">{metadata.name}</div>
+                  </div>
+                )}
+                {metadata.symbol && (
+                  <div>
+                    <Label className="text-xs font-medium">Symbol</Label>
+                    <div className="mt-1.5 text-sm">{metadata.symbol}</div>
+                  </div>
+                )}
+                {metadata.decimals !== undefined && (
+                  <div>
+                    <Label className="text-xs font-medium">Decimals</Label>
+                    <div className="mt-1.5 text-sm">{metadata.decimals}</div>
+                  </div>
+                )}
+                {metadata.totalSupply && (
+                  <div>
+                    <Label className="text-xs font-medium">Total Supply</Label>
+                    <div className="mt-1.5 text-sm">{metadata.totalSupply}</div>
+                  </div>
+                )}
+                {metadata.version && (
+                  <div>
+                    <Label className="text-xs font-medium">Version</Label>
+                    <div className="mt-1.5 text-sm">{metadata.version}</div>
+                  </div>
+                )}
+              </div>
+
+              {metadata.functions.length > 0 && (
+                <div>
+                  <Label className="text-xs font-medium">Available Functions</Label>
+                  <div className="mt-1.5 space-y-2">
+                    {metadata.functions.map((fn: any) => (
+                      <div key={fn.name} className="rounded-md border p-3">
+                        <div className="font-mono text-sm">{fn.name}</div>
+                        {fn.parameters.length > 0 && (
+                          <div className="mt-2 space-y-1.5">
+                            {fn.parameters.map((param: any) => (
+                              <div key={param.name} className="flex items-center gap-2 text-sm">
+                                <Badge variant="outline" className="font-mono">
+                                  {param.type}
+                                </Badge>
+                                <span className="font-mono text-muted-foreground">
+                                  {param.name}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 function SignersList({ walletId }: { walletId: string }) {
   const [signers, setSigners] = useState<SignerInfo[]>([]);
@@ -276,7 +459,7 @@ function SignersList({ walletId }: { walletId: string }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {signers.map((signer) => (
         <div key={signer.publicKey}>
           <Dialog open={isModalOpen && selectedSigner?.publicKey === signer.publicKey} onOpenChange={(open) => {
@@ -287,27 +470,27 @@ function SignersList({ walletId }: { walletId: string }) {
           }}>
             <DialogTrigger asChild>
               <div
-                className="flex items-center justify-between rounded-lg bg-white p-4 shadow-sm cursor-pointer hover:bg-gray-50"
+                className="flex items-center justify-between border border-gray-100 rounded-lg bg-white p-3 cursor-pointer hover:border-gray-200 transition-colors"
                 onClick={() => {
                   setSelectedSigner(signer);
                   setIsModalOpen(true);
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                    <span className="text-sm font-medium text-gray-600">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 border border-gray-100">
+                    <span className="text-xs font-medium text-gray-600">
                       {signer.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-medium text-gray-900">{signer.name}</h3>
-                      <Badge className="bg-gray-100 text-xs font-normal text-gray-600">
+                      <Badge className="bg-gray-50 border border-gray-100 text-xs font-normal text-gray-600">
                         {signer.purpose}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <span>{shortAddress(signer.publicKey)}</span>
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <span className="font-mono">{shortAddress(signer.publicKey)}</span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -315,14 +498,14 @@ function SignersList({ walletId }: { walletId: string }) {
                         }}
                         className="text-gray-400 hover:text-gray-600"
                       >
-                        <Copy className="h-3.5 w-3.5" />
+                        <Copy className="h-3 w-3" />
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-400">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-400">
                     {new Date(signer.addedAt).toLocaleDateString()}
                   </span>
                   <button
@@ -330,56 +513,56 @@ function SignersList({ walletId }: { walletId: string }) {
                       e.stopPropagation();
                       /* TODO: Implement share functionality */
                     }}
-                    className="flex items-center gap-1.5 rounded-md bg-gray-100 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-200"
+                    className="flex items-center gap-1.5 rounded-md border border-gray-100 px-2.5 py-1 text-xs text-gray-600 hover:border-gray-200 transition-colors"
                   >
-                    <Share2 className="h-4 w-4" />
+                    <Share2 className="h-3.5 w-3.5" />
                     Share
                   </button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
                         onClick={(e) => e.stopPropagation()}
-                        className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                        className="rounded-full p-1 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
                       >
-                        <MoreVertical className="h-4 w-4" />
+                        <MoreVertical className="h-3.5 w-3.5" />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem className="gap-2">
-                        <ArrowRightLeft className="h-4 w-4" />
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem className="gap-2 text-xs">
+                        <ArrowRightLeft className="h-3.5 w-3.5" />
                         <span>Transfer</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2">
-                        <Terminal className="h-4 w-4" />
+                      <DropdownMenuItem className="gap-2 text-xs">
+                        <Terminal className="h-3.5 w-3.5" />
                         <span>Call Contract</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2">
-                        <FileText className="h-4 w-4" />
+                      <DropdownMenuItem className="gap-2 text-xs">
+                        <FileText className="h-3.5 w-3.5" />
                         <span>Attach Policy</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2">
-                        <Pencil className="h-4 w-4" />
+                      <DropdownMenuItem className="gap-2 text-xs">
+                        <Pencil className="h-3.5 w-3.5" />
                         <span>Edit</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2" onClick={() => copyToClipboard(signer.publicKey)}>
-                        <Copy className="h-4 w-4" />
+                      <DropdownMenuItem className="gap-2 text-xs" onClick={() => copyToClipboard(signer.publicKey)}>
+                        <Copy className="h-3.5 w-3.5" />
                         <span>Copy Public Key</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2">
-                        <QrCode className="h-4 w-4" />
+                      <DropdownMenuItem className="gap-2 text-xs">
+                        <QrCode className="h-3.5 w-3.5" />
                         <span>Show QR Code</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2">
-                        <Download className="h-4 w-4" />
+                      <DropdownMenuItem className="gap-2 text-xs">
+                        <Download className="h-3.5 w-3.5" />
                         <span>Download</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2">
-                        <Share2 className="h-4 w-4" />
+                      <DropdownMenuItem className="gap-2 text-xs">
+                        <Share2 className="h-3.5 w-3.5" />
                         <span>Share</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="gap-2 text-red-600 focus:bg-red-50 focus:text-red-600">
-                        <Trash2 className="h-4 w-4" />
+                      <DropdownMenuItem className="gap-2 text-xs text-red-600 focus:bg-red-50 focus:text-red-600">
+                        <Trash2 className="h-3.5 w-3.5" />
                         <span>Remove</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -390,7 +573,7 @@ function SignersList({ walletId }: { walletId: string }) {
             {selectedSigner && (
               <SignerModal
                 signer={selectedSigner}
-                policies={[]} // TODO: Pass actual policies
+                policies={[]}
                 onClose={() => {
                   setSelectedSigner(null);
                   setIsModalOpen(false);
@@ -454,11 +637,11 @@ function PoliciesVault({ walletId }: { walletId: string }) {
   };
 
   return (
-    <div className="mt-8 space-y-4">
+    <div className="mt-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-base text-gray-600">Policies</h3>
-          <Badge variant="secondary" className="text-xs">
+          <h3 className="text-sm font-medium text-gray-600">Policies</h3>
+          <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4 bg-gray-50 border border-gray-100 text-gray-600">
             {policies.length}
           </Badge>
         </div>
@@ -466,7 +649,7 @@ function PoliciesVault({ walletId }: { walletId: string }) {
           onClick={handleAddPolicy}
           variant="ghost"
           size="sm"
-          className="text-xs"
+          className="text-xs h-7 px-2"
           disabled={isAdding}
         >
           {isAdding ? (
@@ -483,25 +666,25 @@ function PoliciesVault({ walletId }: { walletId: string }) {
         </Button>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {policies.length === 0 ? (
-          <div className="rounded-md border border-dashed border-gray-200 p-4 text-center">
+          <div className="rounded-md border border-dashed border-gray-100 p-3 text-center">
             <p className="text-xs text-gray-500">No policies attached</p>
           </div>
         ) : (
           policies.map((policy) => (
             <div
               key={policy.id}
-              className="flex items-center justify-between rounded-md border border-gray-100 bg-gray-50 p-3"
+              className="flex items-center justify-between rounded-md border border-gray-100 bg-white p-2"
             >
               <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white">
-                  <FileText className="h-4 w-4 text-gray-500" />
+                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gray-50 border border-gray-100">
+                  <FileText className="h-3.5 w-3.5 text-gray-500" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-900">{policy.name}</h4>
+                  <h4 className="text-xs font-medium text-gray-900">{policy.name}</h4>
                   <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <span>{shortAddress(policy.content)}</span>
+                    <span className="font-mono">{shortAddress(policy.content)}</span>
                     <button
                       onClick={() => copyToClipboard(policy.content)}
                       className="text-gray-400 hover:text-gray-600"
@@ -513,26 +696,26 @@ function PoliciesVault({ walletId }: { walletId: string }) {
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                    <MoreVertical className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem>
-                    <Pencil className="mr-2 h-4 w-4" />
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem className="text-xs">
+                    <Pencil className="mr-2 h-3.5 w-3.5" />
                     <span>Edit</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Share2 className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem className="text-xs">
+                    <Share2 className="mr-2 h-3.5 w-3.5" />
                     <span>Share</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => copyToClipboard(policy.content)}>
-                    <Copy className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem className="text-xs" onClick={() => copyToClipboard(policy.content)}>
+                    <Copy className="mr-2 h-3.5 w-3.5" />
                     <span>Copy Address</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-600">
-                    <Trash2 className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem className="text-xs text-red-600">
+                    <Trash2 className="mr-2 h-3.5 w-3.5" />
                     <span>Delete</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -644,58 +827,58 @@ export default function PasskeyCreation() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafafa] text-gray-900">
-      <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="min-h-screen bg-white text-gray-900">
+      <div className="mx-auto max-w-6xl px-4 py-6">
         <AccountSwitcher />
-        <div className="mt-8 grid gap-8 md:grid-cols-[280px_1fr]">
+        <div className="mt-6 grid gap-6 md:grid-cols-[240px_1fr]">
           {/* Left Section */}
-          <div className="space-y-6">
-            <div className="rounded-lg bg-white p-8 shadow-sm">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-base text-gray-600">Total Balance</h2>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-gray-100 bg-white p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-sm font-medium text-gray-600">Total Balance</h2>
                 {contractId && (
                   <button
                     onClick={() => { fundWallet(contractId!) }}
-                    className="text-sm text-gray-600 hover:text-gray-900"
+                    className="text-xs text-gray-500 hover:text-gray-900"
                   >
                     {isFunding ? "Funding..." : "Fund wallet"}
                   </button>
                 )}
               </div>
 
-              <div className="space-y-4 mb-8">
+              <div className="space-y-3 mb-6">
                 <div className="flex items-center">
-                  <span className="text-2xl text-gray-900 font-normal">
-                    <span className="text-gray-400 mr-2">$</span>
+                  <span className="text-xl text-gray-900 font-normal tracking-tight">
+                    <span className="text-gray-400 mr-1.5">$</span>
                     {fromStroops(contractBalance?.[USDC] ?? "0", 2)} USD
                   </span>
                 </div>
                 <div className="flex items-center">
-                  <span className="text-2xl text-gray-900 font-normal">
-                    <span className="text-gray-400 mr-2">€</span>
+                  <span className="text-xl text-gray-900 font-normal tracking-tight">
+                    <span className="text-gray-400 mr-1.5">€</span>
                     {fromStroops(contractBalance?.[EURC] ?? "0", 2)} EUR
                   </span>
                 </div>
-                <div className="pt-4 border-t border-gray-100">
-                  <span className="text-base text-gray-500">
+                <div className="pt-3 border-t border-gray-50">
+                  <span className="text-sm text-gray-500">
                     {fromStroops(balance)} XLM
                   </span>
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base text-gray-600">
+                  <h3 className="text-sm font-medium text-gray-600">
                     {contractId ? "Smart Wallet" : "Connect Wallet"}
                   </h3>
                   {contractId && (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-500">{shortAddress(contractId)}</span>
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-xs text-gray-500 font-mono">{shortAddress(contractId)}</span>
                       <button
                         onClick={() => copyToClipboard(contractId)}
                         className="text-gray-400 hover:text-gray-600"
                       >
-                        <Copy className="h-4 w-4" />
+                        <Copy className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   )}
@@ -704,35 +887,35 @@ export default function PasskeyCreation() {
                 {!contractId && keyId && (
                   <Button
                     onClick={() => connect(keyId!)}
-                    className="w-full bg-black text-sm text-white hover:bg-gray-900"
+                    className="w-full bg-gray-900 text-xs text-white hover:bg-black"
                   >
-                    <ScanFaceIcon className="mr-2 h-4 w-4" />
+                    <ScanFaceIcon className="mr-2 h-3.5 w-3.5" />
                     Connect
                   </Button>
                 )}
                 {!contractId && (
                   <Button
                     onClick={() => create()}
-                    className="w-full bg-black text-sm text-white hover:bg-gray-900"
+                    className="w-full bg-gray-900 text-xs text-white hover:bg-black"
                   >
-                    <ScanFaceIcon className="mr-2 h-4 w-4" />
+                    <ScanFaceIcon className="mr-2 h-3.5 w-3.5" />
                     Create Smart Wallet
                   </Button>
                 )}
                 {contractId && (
                   <Button
                     onClick={handleAddSigner}
-                    className="w-full bg-black text-sm text-white hover:bg-gray-900"
+                    className="w-full bg-gray-900 text-xs text-white hover:bg-black"
                     disabled={loading}
                   >
                     {loading ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                         Adding Signer...
                       </>
                     ) : (
                       <>
-                        <Plus className="mr-2 h-4 w-4" />
+                        <Plus className="mr-2 h-3.5 w-3.5" />
                         Add Signer
                       </>
                     )}
@@ -744,8 +927,13 @@ export default function PasskeyCreation() {
           </div>
 
           {/* Main Content */}
-          <div className="space-y-6">
-            {contractId && <SignersList walletId={contractId} />}
+          <div className="space-y-4">
+            {contractId && (
+              <>
+                <SignersList walletId={contractId} />
+                <ContractCall mainWalletId={contractId} />
+              </>
+            )}
           </div>
         </div>
       </div>
