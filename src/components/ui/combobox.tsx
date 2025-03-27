@@ -48,11 +48,38 @@ export function Combobox({
     disabled = false,
 }: ComboboxProps) {
     const [open, setOpen] = React.useState(false)
+    const triggerRef = React.useRef<HTMLButtonElement>(null)
+    const [triggerWidth, setTriggerWidth] = React.useState<number | null>(null)
+
+    // Update width when the trigger element resizes or when opened
+    React.useEffect(() => {
+        if (triggerRef.current) {
+            setTriggerWidth(triggerRef.current.offsetWidth)
+        }
+
+        const updateWidth = () => {
+            if (triggerRef.current) {
+                setTriggerWidth(triggerRef.current.offsetWidth)
+            }
+        }
+
+        // Use ResizeObserver to detect size changes
+        if (typeof ResizeObserver !== 'undefined' && triggerRef.current) {
+            const observer = new ResizeObserver(updateWidth)
+            observer.observe(triggerRef.current)
+            return () => observer.disconnect()
+        }
+
+        // Fallback to window resize events
+        window.addEventListener('resize', updateWidth)
+        return () => window.removeEventListener('resize', updateWidth)
+    }, [open])
 
     return (
         <Popover open={open} onOpenChange={setOpen} modal={true}>
             <PopoverTrigger asChild>
                 <Button
+                    ref={triggerRef}
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
@@ -74,7 +101,12 @@ export function Combobox({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0" align="start" side="bottom">
+            <PopoverContent
+                className="p-0"
+                align="start"
+                side="bottom"
+                style={{ width: triggerWidth ? `${triggerWidth}px` : undefined }}
+            >
                 <Command>
                     <CommandInput placeholder={searchPlaceholder} className="h-9" />
                     <CommandList>
