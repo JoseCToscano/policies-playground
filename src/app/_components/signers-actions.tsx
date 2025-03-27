@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, Copy, QrCode, Share2, Link } from "lucide-react"
-import { QRCodeSVG } from 'qrcode.react';
+import { MoreHorizontal } from "lucide-react"
 
 import { Button } from "~/components/ui/button"
 import {
@@ -29,19 +28,10 @@ import {
 import { Arrow } from "@radix-ui/react-dropdown-menu"
 import { Keypair } from "@stellar/stellar-sdk"
 import { api } from "~/trpc/react"
-import { account, ClientTRPCErrorHandler, copyToClipboard } from "~/lib/utils"
+import { account, ClientTRPCErrorHandler } from "~/lib/utils"
 import toast from "react-hot-toast"
 import { useSmartWallet } from "~/hooks/useSmartWallet"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "~/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 
 const labels = [
   "feature",
@@ -53,14 +43,26 @@ const labels = [
   "maintenance",
 ]
 
+type PolicyAssignment = {
+  policyId: string;
+  signerPublicKey: string;
+  walletId: string;
+  assignedAt: string;
+}
+
+type StoredPolicyAssignments = {
+  [walletId: string]: PolicyAssignment[];
+}
+
 interface SignersActionsProps {
   handleSep10?: (publicKey: string) => void;
   handleTransfer: ({ keypair, to, amount, keyId }: { keypair?: Keypair, to: string, amount: number, keyId?: string }) => void;
   publicKey?: string;
   keyId?: string;
+  walletId: string;
 }
 
-export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId }: SignersActionsProps) {
+export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId, walletId }: SignersActionsProps) {
   const [open, setOpen] = React.useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = React.useState(false);
   const [transferAmount, setTransferAmount] = React.useState(10);
@@ -69,29 +71,11 @@ export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId }
 
   const { getKeypair, removeSubWallet } = useSmartWallet();
 
-  const executeTransfer = async () => {
-    try {
-      if (!handleTransfer || !(publicKey || keyId)) return;
-      if (!transferTo || !transferAmount) { alert("Please fill in all fields"); return; }
-      if (publicKey) {
-        const kp = await getKeypair(publicKey);
-        if (!kp) {
-          toast.error("Failed to get keypair");
-          return;
-        }
-        await handleTransfer({ keypair: kp, to: transferTo, amount: transferAmount });
-      } else {
-        await handleTransfer({ to: transferTo, amount: transferAmount, keyId });
-      }
-    } catch (e) {
-      toast.error("Transfer failed");
-    }
-  }
-
   const handleDelete = async () => {
     if (!publicKey) return;
     setIsDeleting(true);
     try {
+      removePolicyAssignments(publicKey);
       await removeSubWallet(publicKey);
     } catch (e) {
       toast.error("Failed to delete subwallet");
@@ -99,6 +83,70 @@ export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId }
       setIsDeleting(false);
     }
   }
+
+  const executeTransfer = () => {
+    if (!publicKey) return;
+    handleTransfer({
+      to: transferTo,
+      amount: transferAmount,
+      keyId: keyId
+    });
+  };
+
+  const assignPolicy = (policyId: string) => {
+    if (!publicKey) return;
+
+    try {
+      const storedAssignments: StoredPolicyAssignments = JSON.parse(
+        localStorage.getItem("zg:policy_assignments") || "{}"
+      );
+
+      if (!storedAssignments[walletId]) {
+        storedAssignments[walletId] = [];
+      }
+
+      const isAlreadyAssigned = storedAssignments[walletId].some(
+        assignment => assignment.policyId === policyId && assignment.signerPublicKey === publicKey
+      );
+
+      if (isAlreadyAssigned) {
+        toast.error("Policy is already assigned to this signer");
+        return;
+      }
+
+      storedAssignments[walletId].push({
+        policyId,
+        signerPublicKey: publicKey,
+        walletId,
+        assignedAt: new Date().toISOString()
+      });
+
+      localStorage.setItem("zg:policy_assignments", JSON.stringify(storedAssignments));
+      toast.success("Policy assigned successfully");
+      setOpen(false);
+    } catch (error) {
+      console.error("Error assigning policy:", error);
+      toast.error("Failed to assign policy");
+    }
+  };
+
+  const removePolicyAssignments = (signerPublicKey: string) => {
+    try {
+      const storedAssignments: StoredPolicyAssignments = JSON.parse(
+        localStorage.getItem("zg:policy_assignments") || "{}"
+      );
+
+      if (storedAssignments[walletId]) {
+        storedAssignments[walletId] = storedAssignments[walletId].filter(
+          assignment => assignment.signerPublicKey !== signerPublicKey
+        );
+
+        localStorage.setItem("zg:policy_assignments", JSON.stringify(storedAssignments));
+      }
+    } catch (error) {
+      console.error("Error removing policy assignments:", error);
+    }
+  };
 
   return (
     <>
@@ -112,108 +160,9 @@ export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId }
           <Arrow />
           <DropdownMenuLabel>Signer Actions</DropdownMenuLabel>
           <DropdownMenuGroup>
-            <Dialog>
-              <DialogTrigger asChild>
-                <DropdownMenuItem onSelect={(e) => {
-                  e.preventDefault();
-                  setOpen(false);
-                }}>
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
-                </DropdownMenuItem>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Share Signer</DialogTitle>
-                </DialogHeader>
-                <div className="flex flex-col items-center space-y-6">
-                  {/* QR Code */}
-                  <div className="bg-white p-4 rounded-lg shadow-sm border">
-                    {publicKey && (
-                      <QRCodeSVG
-                        value={publicKey}
-                        size={200}
-                        level="H"
-                        includeMargin={true}
-                        className="w-full h-full"
-                      />
-                    )}
-                  </div>
-
-                  {/* Public Key */}
-                  <div className="w-full space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Public Key</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={publicKey || ""}
-                        className="flex-1 px-3 py-2 text-sm border rounded-md bg-gray-50"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => {
-                          if (publicKey) {
-                            copyToClipboard(publicKey);
-                            toast.success("Public key copied!");
-                          }
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Share Options */}
-                  <div className="w-full space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Share via</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => {
-                          if (publicKey) {
-                            void navigator.share({
-                              title: "Share Signer",
-                              text: `Signer Public Key: ${publicKey}`,
-                            }).catch(() => {
-                              // Fallback if Web Share API is not supported
-                              copyToClipboard(publicKey);
-                              toast.success("Public key copied!");
-                            });
-                          }
-                        }}
-                      >
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Share
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => {
-                          if (publicKey) {
-                            copyToClipboard(publicKey);
-                            toast.success("Public key copied!");
-                          }
-                        }}
-                      >
-                        <Link className="h-4 w-4 mr-2" />
-                        Copy Link
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <DropdownMenuItem>Share</DropdownMenuItem>
             {handleSep10 && publicKey && <DropdownMenuItem onClick={() => handleSep10(publicKey)}>Sep10</DropdownMenuItem>}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => {
-              setOpen(false);
-              setTransferDialogOpen(true);
-            }}>
-              Transfer
-            </DropdownMenuItem>
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>Attach policy</DropdownMenuSubTrigger>
               <DropdownMenuSubContent
@@ -235,7 +184,7 @@ export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId }
                           key={label}
                           value={label}
                           onSelect={(value) => {
-                            setOpen(false)
+                            assignPolicy(value);
                           }}
                         >
                           {label}
