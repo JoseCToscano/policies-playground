@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { account, fundSigner, native, server, fundPubkey, fundKeypair } from "~/lib/utils";
 import base64url from "base64url";
 import { Address, hash, Keypair, Operation, scValToNative, StrKey, rpc as SorobanRpc, TransactionBuilder, xdr, Transaction } from "@stellar/stellar-sdk";
-import { SignerStore } from "passkey-kit";
+import { SignerStore, type SignerLimits, SignerKey } from "passkey-kit";
 import { useSearchParams } from "./useSearchParams";
 import { env } from "~/env";
 import { Client, Contract as ZafeguardContract } from "zafegard-policy-sdk";
@@ -617,7 +617,27 @@ export const useSmartWallet = () => {
         }
     }
 
+    async function attachPolicy(signerPublicKey: string, contractIdToLimit: string, policyId: string) {
+        const ed25519_limits: SignerLimits = new Map();
+
+        // ed25519 key can call do_math contract but only if it also calls the do_math policy
+        ed25519_limits.set(contractIdToLimit, [SignerKey.Policy(policyId)])
+
+        const at = await account.addEd25519(
+            signerPublicKey,
+            ed25519_limits,
+            SignerStore.Temporary
+        );
+
+        const signedTx = await account.sign(at, { keyId });
+        const res = await server.send(signedTx);
+
+        return res;
+
+    }
+
     return {
+        attachPolicy,
         signAndSend,
         create,
         adminSigner,
