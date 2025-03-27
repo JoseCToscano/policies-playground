@@ -9,6 +9,7 @@ import {
   ScanFaceIcon,
   Plus,
   Loader2,
+  Fingerprint,
 } from "lucide-react"
 import { Keypair } from '@stellar/stellar-sdk'
 import { useSep10 } from '~/hooks/useSep10'
@@ -18,6 +19,7 @@ import { toast } from 'react-hot-toast'
 import { ContractCall } from '~/app/home/_components/contract-call'
 import { SignerInfo, SignersList, StoredSigners } from '~/app/home/_components/signers-list'
 import { Policy, PoliciesVault } from '~/app/home/_components/policies-vault'
+import { Badge } from "~/components/ui/badge"
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
@@ -123,23 +125,31 @@ export default function PasskeyCreation() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      <div className="mx-auto px-4 py-6">
-        <div className="mt-6 grid gap-6 md:grid-cols-[280px_1fr]">
+      <div className="mx-auto px-12 py-6 pb-24">
+        <div className="mt-6 grid gap-6 md:grid-cols-[320px_1fr]">
           {/* Left Section - Dashboard Sidebar */}
           <div className="flex flex-col space-y-4">
             <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
               {/* Wallet Header */}
               <div className="border-b border-gray-100 bg-gray-50 p-4">
-                <h2 className="text-sm font-medium text-gray-700">Smart Wallet</h2>
+                <div className="flex items-center gap-2">
+                  <Fingerprint className="h-4 w-4 text-indigo-500" />
+                  <h2 className="text-sm font-medium text-gray-700">Biometric Smart Wallet</h2>
+                </div>
                 {contractId && (
                   <div className="mt-1 flex items-center space-x-1.5">
-                    <span className="text-xs text-gray-500 font-mono">{shortAddress(contractId)}</span>
-                    <button
-                      onClick={() => copyToClipboard(contractId)}
-                      className="text-gray-400 hover:text-gray-600"
+                    <Badge
+                      variant="secondary"
+                      className="px-2 py-0 h-5 bg-gray-50 border border-gray-200 hover:bg-gray-100"
                     >
-                      <Copy className="h-3.5 w-3.5" />
-                    </button>
+                      <span className="text-xs text-gray-600 font-mono">{shortAddress(contractId)}</span>
+                      <button
+                        onClick={() => copyToClipboard(contractId)}
+                        className="ml-1.5 text-gray-400 hover:text-gray-600"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                    </Badge>
                   </div>
                 )}
               </div>

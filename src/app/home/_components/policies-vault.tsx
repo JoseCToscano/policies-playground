@@ -88,12 +88,6 @@ const popularContracts: ComboboxItem[] = [
         icon: <Combine className="h-3.5 w-3.5" />
     },
     {
-        label: "BLND Token",
-        description: "Blend's protocol token",
-        value: "BLND-GATALTGTWIOT6BUDBCZM3Q4OQ4BO2COLOAZ7IYSKPLC2PMSOPPGF5V56",
-        icon: <Combine className="h-3.5 w-3.5" />
-    },
-    {
         value: "CAXZG5WRNRY4ZDG6UPNFAQ2HY77HPETA7YIQDKFK4JENRVH43X2TREW6",
         label: "Do Math",
         description: "@kalepail's Do Math Demo",
@@ -101,8 +95,8 @@ const popularContracts: ComboboxItem[] = [
     },
     {
         label: "Contact's list",
-        description: "Demo Contact's list Smart Contract",
-        value: "CBSONS3JDQQ2IJEYQP2HWKKW6RJ3LYSGJZTXREFJ7TPFVFAY4BTS4LJY",
+        description: "@JoseCToscano's Contact's Smart Contract Demo",
+        value: "CA7RPHRR5MCWBPDD4ZT6M6AIME7KTZH5QRHFT45GXNAXCQ3VW3ABJXAZ",
         icon: <Combine className="h-3.5 w-3.5" />
     },
 ];
@@ -112,8 +106,9 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
     const [isAdding, setIsAdding] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [selectedContract, setSelectedContract] = useState("");
-    const { addPolicy, safeRemovePolicy } = useSmartWallet();
+    const { addPolicy, safeRemovePolicy, detachPolicy } = useSmartWallet();
     const [isRemoving, setIsRemoving] = useState(false);
+    const [deletingPolicyId, setDeletingPolicyId] = useState<string | null>(null);
 
     const form = useForm<z.infer<typeof policyFormSchema>>({
         resolver: zodResolver(policyFormSchema),
@@ -177,14 +172,18 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
 
     const handleRemovePolicy = async (policy: Policy) => {
         try {
+            setDeletingPolicyId(policy.id);
             setIsRemoving(true);
             // Get all signers that have this policy assigned
             const affectedSigners = policyAssignmentUtils.getSignersForPolicy(policy.id, walletId);
-
+            console.log('affectedSigners', affectedSigners);
             // Remove policy from all affected signers
             for (const signerKey of affectedSigners) {
-                await safeRemovePolicy(policy.policyId, policy.contractIdToLimit, signerKey);
+                console.log('signerKey', signerKey);
+                await detachPolicy(signerKey);
             }
+
+            await safeRemovePolicy(policy.policyId);
 
             // Remove policy assignments from storage
             policyAssignmentUtils.removePolicy(policy.id, walletId);
@@ -197,6 +196,9 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
             if (storedPolicies[walletId]) {
                 storedPolicies[walletId] = storedPolicies[walletId].filter(p => p.id !== policy.id);
                 localStorage.setItem("zg:wallet_policies", JSON.stringify(storedPolicies));
+
+                // Update local state immediately
+                setPolicies(storedPolicies[walletId]);
             }
 
             toast.success("Policy removed successfully");
@@ -205,6 +207,7 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
             toast.error("Failed to remove policy");
         } finally {
             setIsRemoving(false);
+            setDeletingPolicyId(null);
         }
     }
 
@@ -239,6 +242,14 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
                             key={policy.id}
                             className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-2 hover:bg-gray-50"
                         >
+                            {deletingPolicyId === policy.id && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-md z-10">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                                        <span className="text-xs text-red-600">Removing policy...</span>
+                                    </div>
+                                </div>
+                            )}
                             <div className="flex items-center gap-2">
                                 <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gray-50 border border-gray-200">
                                     <FileText className="h-3.5 w-3.5 text-gray-500" />
@@ -247,18 +258,14 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
                                     <h4 className="text-xs font-medium text-gray-900">{policy.name}</h4>
                                     <div className="flex flex-col gap-0.5">
                                         <div className="flex items-center gap-1 text-xs text-gray-500">
-                                            <span>Contract: </span>
-                                            <span className="font-mono">{shortAddress(policy.content)}</span>
+                                            <span>Policy ID: </span>
+                                            <span className="font-mono">{shortAddress(policy.policyId)}</span>
                                             <button
-                                                onClick={() => copyToClipboard(policy.content)}
+                                                onClick={() => copyToClipboard(policy.policyId)}
                                                 className="text-gray-400 hover:text-gray-600"
                                             >
                                                 <Copy className="h-3 w-3" />
                                             </button>
-                                        </div>
-                                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                                            <span>Policy ID: </span>
-                                            <span className="font-mono">{shortAddress(policy.policyId)}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -278,12 +285,10 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
                                     <DropdownMenuItem
                                         className="text-xs text-red-600"
                                         onClick={() => handleRemovePolicy(policy)}
+                                        disabled={deletingPolicyId === policy.id}
                                     >
                                         <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                        <span>Delete</span>
-                                        {isRemoving && (
-                                            <Loader2 className="ml-2 h-3.5 w-3.5 animate-spin" />
-                                        )}
+                                        <span>Remove Policy</span>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>

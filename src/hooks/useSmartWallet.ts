@@ -585,23 +585,99 @@ export const useSmartWallet = () => {
         }
     }
 
-    async function attachPolicy(signerPublicKey: string, contractIdToLimit: string, policyId: string) {
-        const ed25519_limits: SignerLimits = new Map();
-
-        // ed25519 key can call do_math contract but only if it also calls the do_math policy
-        ed25519_limits.set(contractIdToLimit, [SignerKey.Policy(policyId)])
-
-        const at = await account.addEd25519(
-            signerPublicKey,
-            ed25519_limits,
-            SignerStore.Temporary
+    async function addPolicy(policyId: string) {
+        const at = await account.addPolicy(
+            policyId,
+            new Map(),
+            SignerStore.Persistent
         );
 
         const signedTx = await account.sign(at, { keyId });
         const res = await server.send(signedTx);
-
+        console.log('res', res);
         return res;
+    }
 
+    async function attachPolicy(signerPublicKey: string, contractIdToLimit: string, policyId: string) {
+        if (!keyId) {
+            toast.error('KeyId not initialized');
+            return;
+        }
+
+        const limits = new Map([
+            [
+                contractIdToLimit,
+                [
+                    {
+                        key: "Policy",
+                        value: policyId
+                    }
+                ]
+            ]
+        ]);
+
+
+        const at = await account.updateEd25519(
+            signerPublicKey,
+            limits,
+            SignerStore.Temporary
+        );
+        const signedTx = await account.sign(at, { keyId });
+        const res = await server.send(signedTx);
+        console.log('res', res);
+        return res;
+    }
+
+    async function removeSigner(signerPublicKey: string) {
+        if (!keyId) {
+            toast.error('KeyId not initialized');
+            return;
+        }
+        const at = await account.remove({
+            key: "Ed25519",
+            value: signerPublicKey
+        });
+        const signedTx = await account.sign(at, { keyId });
+        const res = await server.send(signedTx);
+        console.log('res', res);
+        return res;
+    }
+
+    async function detachPolicy(signerEd25519PublicKey: string) {
+        if (!keyId) {
+            toast.error('KeyId not initialized');
+            return;
+        }
+        const newLimits = new Map();
+
+        const tx = await account.updateEd25519(
+            signerEd25519PublicKey,
+            newLimits,
+            SignerStore.Persistent
+        );
+
+        const signedTx = await account.sign(tx, { keyId });
+        const res = await server.send(signedTx);
+        console.log('res', res);
+        return res;
+    }
+
+    // Better approach - Update the signer first, then remove the policy
+    async function safeRemovePolicy(policyAddress: string) {
+        if (!keyId) {
+            toast.error('KeyId not initialized');
+            return;
+        }
+
+        // 2. Then safely remove the policy
+        const at = await account.remove({
+            key: "Policy",
+            value: policyAddress
+        });
+
+        const signedTx = await account.sign(at, { keyId });
+        const res = await server.send(signedTx);
+        return res;
     }
 
     return {
@@ -627,5 +703,9 @@ export const useSmartWallet = () => {
         getKeypair,
         isConnecting,
         removeSubWallet,
+        addPolicy,
+        removeSigner,
+        safeRemovePolicy,
+        detachPolicy
     }
 }

@@ -23,9 +23,6 @@ export default function RootLayout({
             <ToasterProvider />
             {children}
           </main>
-          <footer className="text-sm text-muted-foreground flex items-center justify-center py-4">
-            <p>© 2025 Freelii</p>
-          </footer>
         </TRPCReactProvider>
       </body>
     </html>

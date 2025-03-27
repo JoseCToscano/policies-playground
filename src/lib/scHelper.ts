@@ -1,4 +1,4 @@
-import { Address, nativeToScVal, xdr, SorobanRpc, TransactionBuilder, Keypair } from '@stellar/stellar-sdk';
+import { Address, nativeToScVal, xdr, rpc as SorobanRpc, TransactionBuilder, Keypair } from '@stellar/stellar-sdk';
 
 /**
  * Convert a string to a Symbol ScVal

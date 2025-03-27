@@ -9,7 +9,7 @@ import { Asset, rpc, contract, Address, xdr, Soroban, Transaction, TransactionBu
 import { SAC_FUNCTIONS } from "~/lib/constants/sac";
 import { ContractMetadata, decodeBuffer, getContractMetadata } from "~/lib/getContractMetadat";
 import { env } from "~/env";
-import { addressToScVal, u32ToScVal, u128ToScVal, boolToScVal, numberToU64, numberToI128, } from "~/lib/scHelper";
+import { addressToScVal, u32ToScVal, u128ToScVal, boolToScVal, numberToU64, numberToI128, stringToSymbol, } from "~/lib/scHelper";
 import { Client } from "@stellar/stellar-sdk/minimal/contract";
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
@@ -129,6 +129,7 @@ export const stellarRouter = createTRPCRouter({
 
         // Map the args to ScVal
         const { functions, contractAddress } = await getContractMetadata(input.contractAddress);
+        console.log('functions:', functions);
         const fn = functions.find(f => f.name === method);
         if (!fn) {
           throw new Error(`Function ${method} not found in contract`);
@@ -175,6 +176,12 @@ export const stellarRouter = createTRPCRouter({
                 return numberToI128(arg);
               }
               break;
+            case 'optional<symbol>':
+            case 'symbol':
+              if (arg) {
+                return stringToSymbol(arg);
+              }
+              break;
             default:
               if (arg) {
                 return nativeToScVal(arg, { type: param.type });
@@ -183,10 +190,7 @@ export const stellarRouter = createTRPCRouter({
           }
           return undefined;
         });
-        console.log('contractAddress:', contractAddress);
-        const contractMetadata = await getContractMetadata(contractAddress!);
-        console.log('contractMetadata:', contractMetadata);
-        const functionMetadata = contractMetadata.functions.find(f => f.name === method);
+        const functionMetadata = functions.find(f => f.name === method);
         if (!functionMetadata) {
           throw new Error(`Function ${method} not found in contract`);
         }
@@ -194,18 +198,14 @@ export const stellarRouter = createTRPCRouter({
         functionMetadata.parameters.forEach((p, i) => {
           params[p.name] = scValArgs[i] as xdr.ScVal;
         });
-        const contractClient = await createSmartContractClient(contractAddress!);
+        const contractClient = await createSmartContractClient(input.contractAddress);
 
 
         let txXdr: string;
-        console.log('method:', method);
-        console.log('scValArgs:', scValArgs);
 
         const functionToCall = contractClient[method as keyof Client];
         console.log('functionToCall:', functionToCall);
         console.log('params:', params);
-
-
         const result = await functionToCall(params);
         console.log('result:', result);
         txXdr = result.toXDR();

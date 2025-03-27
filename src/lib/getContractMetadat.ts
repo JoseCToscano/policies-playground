@@ -267,6 +267,7 @@ export async function getContractMetadata(contractAddress: string): Promise<Cont
     // Check if this is an Asset Contract
     const isAssetContract = contractAddress.includes('-');
     if (isAssetContract) {
+        console.log('isAssetContract', contractAddress);
         const [code, issuer] = contractAddress.split('-');
         if (!code || !issuer) {
             throw new Error("Invalid Asset Contract address format");

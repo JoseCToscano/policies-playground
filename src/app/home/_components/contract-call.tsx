@@ -4,10 +4,8 @@ import { toast } from "react-hot-toast";
 import { api } from "~/trpc/react";
 import { Badge } from '~/components/ui/badge'
 import { useSmartWallet } from "~/hooks/useSmartWallet";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
-import { addressToScVal, boolToScVal, getDefaultAddressValue, i128ToScVal, numberToI128, numberToU64, stringToSymbol, u128ToScVal, u32ToScVal } from "~/lib/scHelper";
 import {
     Copy,
     Loader2,
@@ -18,7 +16,13 @@ import {
     Combine,
     Terminal,
     KeyRound,
-    WalletIcon
+    WalletIcon,
+    Github,
+    LucideBookUser,
+    LucideDiamondPlus,
+    ChevronDown,
+    AlertCircle,
+    RefreshCcw
 } from "lucide-react"
 
 import { Label } from "~/components/ui/label"
@@ -33,12 +37,15 @@ import {
 import { SAC_FUNCTION_DOCS } from "~/lib/constants/sac";
 import { Combobox, ComboboxItem } from "~/components/ui/combobox";
 import { SignerInfo, StoredSigners } from '~/app/home/_components/signers-list';
+import Image from "next/image";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
 
 interface PopularContract {
     name: string;
     description: string;
     address: string;
     icon: React.ReactNode;
+    githubUrl?: string;
 }
 
 interface EnumVariant {
@@ -98,7 +105,15 @@ const popularContracts: PopularContract[] = [
         name: "Native XLM",
         description: "Stellar's native token",
         address: "native",
-        icon: <StarIcon className="h-3.5 w-3.5" />
+        icon: (
+            <Image
+                src="/stellar-xlm-icon.png"
+                alt="XLM"
+                width={14}  // matches h-3.5
+                height={14} // matches w-3.5
+                className="object-contain"
+            />
+        )
     },
     {
         name: "USDC Token",
@@ -116,13 +131,22 @@ const popularContracts: PopularContract[] = [
         name: "Blend",
         description: "Blend Protocol",
         address: "CCHZKMVGSP3N4YEHD4EFHA6UKND5NDVP4COTAFENAFMPRNTEC2U2ST5F",
-        icon: <Combine className="h-3.5 w-3.5" />
+        icon: <Combine className="h-3.5 w-3.5" />,
+        githubUrl: 'https://github.com/blend-capital/blend-contracts'
+    },
+    {
+        name: "Contact's list",
+        description: "@JoseCToscano's Contact's Smart Contract Demo",
+        address: "CA7RPHRR5MCWBPDD4ZT6M6AIME7KTZH5QRHFT45GXNAXCQ3VW3ABJXAZ",
+        icon: <LucideBookUser className="h-3.5 w-3.5" />,
+        githubUrl: 'https://github.com/JoseCToscano/policies-playground'
     },
     {
         name: "Do Math",
         description: "@kalepail's Do Math Demo",
         address: "CAXZG5WRNRY4ZDG6UPNFAQ2HY77HPETA7YIQDKFK4JENRVH43X2TREW6",
-        icon: <Combine className="h-3.5 w-3.5" />
+        icon: <LucideDiamondPlus className="h-3.5 w-3.5" />,
+        githubUrl: 'https://github.com/kalepail/do-math'
     }
 ];
 
@@ -142,6 +166,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
     const [selectedSigner, setSelectedSigner] = useState<string>(mainWalletId || "");
     const [localSigners, setLocalSigners] = useState<SignerInfo[]>([]);
     const { signXDR, signAndSend, signers: walletSigners } = useSmartWallet();
+    const [isPopularContractsOpen, setIsPopularContractsOpen] = useState(true);
 
     // Load signers from localStorage
     useEffect(() => {
@@ -247,9 +272,12 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
         }
     };
 
-    const { data: contractMetadata, isLoading: isLoadingMetadata } = api.stellar.getContractMetadata.useQuery(
+    const { data: contractMetadata, isLoading: isLoadingMetadata, error: metadataError, refetch: refetchMetadata } = api.stellar.getContractMetadata.useQuery(
         { contractAddress },
-        { enabled: contractAddress.length > 0 }
+        {
+            enabled: contractAddress.length > 0,
+            retry: false // Don't automatically retry on error
+        }
     );
 
     const { mutateAsync: prepareContractCall, isPending: isLoadingPrepareContractCall } = api.stellar.prepareContractCall.useMutation({
@@ -300,9 +328,9 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
     };
 
     // Set initial parameter value based on parameter type and name
-    const getInitialParamValue = useCallback((param: any) => {
+    const getInitialParamValue = useCallback((param: any, isFirstParam: boolean) => {
         // For address parameters with specific names, use the main wallet ID regardless of selected signer
-        if (shouldUseDefaultAddressValue(param.name, param.type) && mainWalletId) {
+        if (shouldUseDefaultAddressValue(param.name, param.type, isFirstParam) && mainWalletId) {
             return mainWalletId;
         }
         return "";
@@ -314,8 +342,8 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
             const fn = metadata.functions.find((f: any) => f.name === selectedFunction);
             if (fn) {
                 const initialParams: Record<string, string> = {};
-                fn.parameters.forEach((param: any) => {
-                    initialParams[param.name] = getInitialParamValue(param);
+                fn.parameters.forEach((param: any, index: number) => {
+                    initialParams[param.name] = getInitialParamValue(param, index === 0);
                 });
                 setFunctionParams(initialParams);
             }
@@ -350,37 +378,6 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
         return params;
     };
 
-    // Convert parameter to ScVal based on type
-    const paramToScVal = (value: any, type: string) => {
-        try {
-            // Handle common types
-            if (type === 'address') {
-                return addressToScVal(value);
-            } else if (type === 'u32') {
-                return u32ToScVal(Number(value));
-            } else if (type === 'i128') {
-                return i128ToScVal(value);
-            } else if (type === 'u128') {
-                return u128ToScVal(value);
-            } else if (type === 'bool') {
-                return boolToScVal(Boolean(value));
-            } else if (type === 'symbol') {
-                return stringToSymbol(value);
-            } else if (type.startsWith('u64')) {
-                return numberToU64(Number(value));
-            } else if (type.startsWith('i64')) {
-                return numberToI128(Number(value));
-            }
-
-            // Default handling for other types
-            console.warn(`Unsupported type: ${type}, using default conversion for: ${value}`);
-            return value;
-        } catch (error) {
-            console.error(`Error converting ${value} to ${type}:`, error);
-            throw new Error(`Failed to convert parameter of type ${type}: ${error}`);
-        }
-    };
-
     // Helper to determine if a function is read-only
     const isReadOnlyFunction = (name: string): boolean => {
         return ['balance', 'allowance', 'decimals', 'name', 'symbol'].includes(name);
@@ -402,10 +399,10 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
     };
 
     // Helper to get placeholder for parameter type
-    const getPlaceholder = (type: string, paramName: string): string => {
+    const getPlaceholder = (type: string, paramName: string, isFirstParam: boolean): string => {
         switch (type) {
             case 'address':
-                if (shouldUseDefaultAddressValue(paramName, type)) {
+                if (shouldUseDefaultAddressValue(paramName, type, isFirstParam)) {
                     return 'Main wallet address (fixed)';
                 }
                 return 'G... (56 characters)';
@@ -420,8 +417,8 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
     };
 
     // Helper to check if a parameter is an address type and should get a default value
-    const shouldUseDefaultAddressValue = (paramName: string, paramType: string): boolean => {
-        return paramType === 'address' && ['from', 'source', 'user'].includes(paramName.toLowerCase());
+    const shouldUseDefaultAddressValue = (paramName: string, paramType: string, isFirstParam: boolean): boolean => {
+        return paramType === 'address' && ['from', 'source', 'user', 'id', 'address', 'owner'].includes(paramName.toLowerCase()) && isFirstParam;
     };
 
     // Create XDR for contract function call
@@ -446,6 +443,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                 isReadOnly,
                 walletContractId: selectedSigner
             });
+            console.log('response', response);
             if (!response) {
                 throw new Error("Failed to prepare contract call");
             }
@@ -492,21 +490,31 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
             }
 
             const result = await signAndSend(xdr, signerItem.signerType, signerItem.value);
-            if (result) {
-                toast.success(`Function called successfully using ${signerItem.label}`);
+            console.log('result from executeContractCall:', result);
+            if (typeof result !== 'undefined' && result !== null) {
                 setCallResult(JSON.stringify(result, bigIntReplacer, 2));
             }
-
-            // Submit the XDR
-            // await submitXDRMutation.mutateAsync({ xdr: signedXdr });
+            toast.success(`Function called successfully using ${signerItem.label}`);
         } catch (error: any) {
-            console.error("Error calling contract function:", error);
-            setCallError(error.message || "Unknown error occurred");
-            toast.error(`Error: ${error.message || "Failed to call function"}`);
+            if (error?.error?.includes('Auth, InvalidAction')) {
+                toast.error('Insufficient permissions to call this function');
+                setCallError('Insufficient permissions to call this function');
+            } else {
+                console.error("Error calling contract function:", error);
+                setCallError(error.message || "Unknown error occurred");
+                toast.error(`Error: ${error.message || "Failed to call function"}`);
+            }
         } finally {
             setIsCalling(false);
         }
     };
+
+    // Add this effect to auto-close popular contracts when one is selected
+    useEffect(() => {
+        if (contractAddress) {
+            setIsPopularContractsOpen(false);
+        }
+    }, [contractAddress]);
 
     return (
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -522,31 +530,62 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
             </div>
             <div className="p-4">
                 <div className="space-y-4">
-                    <div>
-                        <Label className="text-xs font-medium">Popular Contracts</Label>
-                        <div className="mt-1.5 grid grid-cols-2 gap-2">
-                            {popularContracts.map((contract) => (
-                                <button
-                                    key={contract.address}
-                                    onClick={() => handleContractSelect(contract)}
-                                    className={cn(
-                                        "flex items-center gap-2 rounded-md border p-2 text-left transition-colors hover:bg-gray-50",
-                                        contractAddress === contract.address && "border-indigo-300 bg-indigo-50"
-                                    )}
-                                >
-                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-white">
-                                        {contract.icon}
-                                    </div>
-                                    <div className="flex-1 overflow-hidden">
-                                        <div className="truncate text-sm font-medium">{contract.name}</div>
-                                        <div className="truncate text-xs text-gray-500">
-                                            {contract.description}
-                                        </div>
-                                    </div>
-                                </button>
-                            ))}
+                    <Collapsible open={isPopularContractsOpen} onOpenChange={setIsPopularContractsOpen}>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Label className="text-xs font-medium">Popular Contracts</Label>
+                                {!isPopularContractsOpen && contractAddress && (
+                                    <Badge variant="outline" className="text-[10px]">
+                                        {popularContracts.find(c => c.address === contractAddress)?.name || shortAddress(contractAddress)}
+                                    </Badge>
+                                )}
+                            </div>
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-gray-500 hover:text-gray-900">
+                                    <span className="text-xs mr-1">{isPopularContractsOpen ? 'Hide' : 'Show contracts'}</span>
+                                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", !isPopularContractsOpen && "-rotate-90")} />
+                                </Button>
+                            </CollapsibleTrigger>
                         </div>
-                    </div>
+                        <CollapsibleContent className="space-y-2 data-[state=closed]:animate-slideUp data-[state=open]:animate-slideDown overflow-hidden">
+                            <div className="mt-1.5 grid grid-cols-2 gap-2">
+                                {popularContracts.map((contract) => (
+                                    <button
+                                        key={contract.address}
+                                        onClick={() => handleContractSelect(contract)}
+                                        className={cn(
+                                            "flex items-center gap-2 rounded-md border p-2 text-left transition-colors hover:bg-gray-50",
+                                            contractAddress === contract.address && "border-indigo-300 bg-indigo-50"
+                                        )}
+                                    >
+                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-white">
+                                            {contract.icon}
+                                        </div>
+                                        <div className="flex-1 overflow-hidden">
+                                            <div className="truncate text-sm font-medium flex items-center gap-1 w-full items-center justify-between">
+                                                {contract.name}
+                                                {contract.githubUrl && (
+                                                    <a
+                                                        href={contract.githubUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="ml-1 flex items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors"
+                                                        title="View source code"
+                                                    >
+                                                        <Github className="h-3 w-3" />
+                                                        <span className="text-[10px]">View on Github</span>
+                                                    </a>
+                                                )}
+                                            </div>
+                                            <div className="truncate text-xs text-gray-500">
+                                                {contract.description}
+                                            </div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </CollapsibleContent>
+                    </Collapsible>
 
                     <div>
                         <Label className="text-xs font-medium">Contract Address</Label>
@@ -575,7 +614,32 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                         </div>
                     )}
 
-                    {metadata && (
+                    {metadataError && (
+                        <div className="flex flex-col items-center justify-center gap-3 py-8 px-4 border rounded-md bg-red-50/50">
+                            <AlertCircle className="h-10 w-10 text-red-500" />
+                            <div className="text-center">
+                                <p className="text-sm text-red-700 font-medium mb-1">
+                                    Failed to fetch contract metadata
+                                </p>
+                                <p className="text-xs text-red-600 max-w-[300px]">
+                                    {metadataError.message || "The contract might not exist or be incompatible"}
+                                </p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    void refetchMetadata();
+                                }}
+                                className="bg-white hover:bg-white"
+                            >
+                                <RefreshCcw className="h-3.5 w-3.5 mr-2" />
+                                Try Again
+                            </Button>
+                        </div>
+                    )}
+
+                    {metadata && !metadataError && (
                         <div className="grid grid-cols-[300px_1fr] gap-4">
                             {/* Left Column: Tabs with Lists */}
                             <div className="space-y-4">
@@ -797,7 +861,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                             ) : (
                                                 metadata.functions
                                                     .find((fn: any) => fn.name === selectedFunction)
-                                                    ?.parameters.map((param: any) => (
+                                                    ?.parameters.map((param: any, index: number) => (
                                                         <div key={param.name} className="space-y-1.5">
                                                             <Label className="text-xs flex items-center justify-between">
                                                                 <span className="font-mono">{param.name}</span>
@@ -836,7 +900,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                                                             });
                                                                         }
                                                                     }}
-                                                                    placeholder={getPlaceholder(param.type, param.name)}
+                                                                    placeholder={getPlaceholder(param.type, param.name, index === 0)}
                                                                     className={cn(
                                                                         "font-mono text-sm h-9",
                                                                         paramErrors[param.name] && "border-red-500"
