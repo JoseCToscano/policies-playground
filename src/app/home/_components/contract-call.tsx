@@ -559,17 +559,6 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                             Test smart contract functions with any signer
                         </CardDescription>
                     </div>
-                    <div className="w-[200px]">
-                        <Combobox
-                            items={signerOptions}
-                            value={selectedSigner}
-                            onChange={setSelectedSigner}
-                            placeholder="Select signer..."
-                            searchPlaceholder="Search signers..."
-                            emptyText="No signers available"
-                            className="w-full text-xs"
-                        />
-                    </div>
                 </div>
             </CardHeader>
             <CardContent>
@@ -871,27 +860,44 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                                     ))
                                             )}
 
-                                            <Button
-                                                className={cn(
-                                                    "w-full",
-                                                    isReadOnlyFunction(selectedFunction) ? "bg-blue-600 hover:bg-blue-700" : "",
-                                                    metadata.functions
-                                                        .find((fn: any) => fn.name === selectedFunction)
-                                                        ?.parameters.length === 0 && "mt-2"
-                                                )}
-                                                size="sm"
-                                                disabled={Object.keys(paramErrors).length > 0 || isCalling}
-                                                onClick={executeContractCall}
-                                            >
-                                                {isCalling ? (
-                                                    <div className="flex items-center justify-center">
-                                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                        {isReadOnlyFunction(selectedFunction) ? "Querying..." : "Submitting..."}
+                                            <div className="flex flex-col gap-2 pt-3">
+                                                <div className="flex items-center gap-2">
+                                                    <Label className="text-xs text-gray-500 whitespace-nowrap">Call using:</Label>
+                                                    <div className="flex-1">
+                                                        <Combobox
+                                                            items={signerOptions}
+                                                            value={selectedSigner}
+                                                            onChange={setSelectedSigner}
+                                                            placeholder="Select signer..."
+                                                            searchPlaceholder="Search signers..."
+                                                            emptyText="No signers available"
+                                                            className="w-full text-xs"
+                                                        />
                                                     </div>
-                                                ) : (
-                                                    isReadOnlyFunction(selectedFunction) ? "Query Function" : "Call Function"
-                                                )}
-                                            </Button>
+                                                </div>
+
+                                                <Button
+                                                    className={cn(
+                                                        "w-full",
+                                                        isReadOnlyFunction(selectedFunction) ? "bg-blue-600 hover:bg-blue-700" : "",
+                                                        metadata.functions
+                                                            .find((fn: any) => fn.name === selectedFunction)
+                                                            ?.parameters.length === 0 && "mt-2"
+                                                    )}
+                                                    size="sm"
+                                                    disabled={Object.keys(paramErrors).length > 0 || isCalling}
+                                                    onClick={executeContractCall}
+                                                >
+                                                    {isCalling ? (
+                                                        <div className="flex items-center justify-center">
+                                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                            {isReadOnlyFunction(selectedFunction) ? "Querying..." : "Submitting..."}
+                                                        </div>
+                                                    ) : (
+                                                        isReadOnlyFunction(selectedFunction) ? "Query Function" : "Call Function"
+                                                    )}
+                                                </Button>
+                                            </div>
 
                                             {callResult && (
                                                 <div className="mt-4 rounded-md bg-gray-50 p-3">
