@@ -570,6 +570,7 @@ export const useSmartWallet = () => {
 
     async function signAndSend(unsignedXDR: string, signerType: 'Ed25519' | 'Secp256r1', signerPublicKey?: string) {
         const signedXDR = await signXDR(unsignedXDR, signerType, signerPublicKey);
+        console.log('signedXDR:', signedXDR.toXDR());
         const res = await server.send(signedXDR);
 
         try {
@@ -604,22 +605,37 @@ export const useSmartWallet = () => {
             return;
         }
 
-        const limits = new Map([
-            [
-                contractIdToLimit,
-                [
-                    {
-                        key: "Policy",
-                        value: policyId
-                    }
-                ]
-            ]
-        ]);
+        // Get existing limits for the signer
+        const existingLimits = new Map();
+        try {
+            const signerInfo = signers.find(s => s.key === signerPublicKey);
+            if (signerInfo?.limits) {
+                Object.entries(signerInfo.limits).forEach(([contractId, policies]) => {
+                    existingLimits.set(contractId, policies);
+                });
+            }
+        } catch (error) {
+            console.error('Error getting existing limits:', error);
+        }
 
+        // Get existing policies for this contract or initialize empty array
+        const existingPolicies = existingLimits.get(contractIdToLimit) || [];
+
+        // Add the new policy to the existing ones
+        const updatedPolicies = [
+            ...existingPolicies,
+            {
+                key: "Policy",
+                value: policyId
+            }
+        ];
+
+        // Update the limits map with both existing and new policies
+        existingLimits.set(contractIdToLimit, updatedPolicies);
 
         const at = await account.updateEd25519(
             signerPublicKey,
-            limits,
+            existingLimits,
             SignerStore.Temporary
         );
         const signedTx = await account.sign(at, { keyId });
