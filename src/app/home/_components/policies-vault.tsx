@@ -5,7 +5,7 @@ import { toast } from "react-hot-toast";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Copy, Share2, Trash2, FileText, Loader2, Plus, MoreVertical, CircleDollarSign, EuroIcon, StarIcon, Combine } from "lucide-react";
-import { copyToClipboard, shortAddress } from "~/lib/utils";
+import { copyToClipboard, shortAddress, policyAssignmentUtils } from "~/lib/utils";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -35,6 +35,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Combobox, ComboboxItem } from "~/components/ui/combobox";
 import { Textarea } from "~/components/ui/textarea";
+import { useSmartWallet } from "~/hooks/useSmartWallet";
 
 type PolicyType = 'contract';
 
@@ -87,9 +88,9 @@ const popularContracts: ComboboxItem[] = [
         icon: <Combine className="h-3.5 w-3.5" />
     },
     {
-        value: "CDI7YU6DMWJCGXXEPQGHBKDPBW3DEICDJ5MOTGNJAEEPWMHW4XXPU2PP",
-        label: "Zafegard",
-        description: "@kalepail's Zafegard Demo",
+        label: "BLND Token",
+        description: "Blend's protocol token",
+        value: "BLND-GATALTGTWIOT6BUDBCZM3Q4OQ4BO2COLOAZ7IYSKPLC2PMSOPPGF5V56",
         icon: <Combine className="h-3.5 w-3.5" />
     },
     {
@@ -97,7 +98,13 @@ const popularContracts: ComboboxItem[] = [
         label: "Do Math",
         description: "@kalepail's Do Math Demo",
         icon: <Combine className="h-3.5 w-3.5" />
-    }
+    },
+    {
+        label: "Contact's list",
+        description: "Demo Contact's list Smart Contract",
+        value: "CBSONS3JDQQ2IJEYQP2HWKKW6RJ3LYSGJZTXREFJ7TPFVFAY4BTS4LJY",
+        icon: <Combine className="h-3.5 w-3.5" />
+    },
 ];
 
 export function PoliciesVault({ walletId }: { walletId: string }) {
@@ -105,6 +112,8 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
     const [isAdding, setIsAdding] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [selectedContract, setSelectedContract] = useState("");
+    const { addPolicy, safeRemovePolicy } = useSmartWallet();
+    const [isRemoving, setIsRemoving] = useState(false);
 
     const form = useForm<z.infer<typeof policyFormSchema>>({
         resolver: zodResolver(policyFormSchema),
@@ -131,6 +140,8 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
     const handleAddPolicy = async (values: z.infer<typeof policyFormSchema>) => {
         setIsAdding(true);
         try {
+            const res = await addPolicy(values.policyId);
+            console.log('res', res);
             const newPolicy: Policy = {
                 id: crypto.randomUUID(),
                 name: values.name,
@@ -164,23 +175,38 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
         }
     };
 
-    const handleDeletePolicy = (policyId: string) => {
+    const handleRemovePolicy = async (policy: Policy) => {
         try {
-            // Update localStorage
-            const storedPolicies: StoredPolicies = JSON.parse(localStorage.getItem("zg:wallet_policies") || "{}");
+            setIsRemoving(true);
+            // Get all signers that have this policy assigned
+            const affectedSigners = policyAssignmentUtils.getSignersForPolicy(policy.id, walletId);
+
+            // Remove policy from all affected signers
+            for (const signerKey of affectedSigners) {
+                await safeRemovePolicy(policy.policyId, policy.contractIdToLimit, signerKey);
+            }
+
+            // Remove policy assignments from storage
+            policyAssignmentUtils.removePolicy(policy.id, walletId);
+
+            // Remove policy from local storage
+            const storedPolicies: StoredPolicies = JSON.parse(
+                localStorage.getItem("zg:wallet_policies") || "{}"
+            );
+
             if (storedPolicies[walletId]) {
-                storedPolicies[walletId] = storedPolicies[walletId].filter(p => p.id !== policyId);
+                storedPolicies[walletId] = storedPolicies[walletId].filter(p => p.id !== policy.id);
                 localStorage.setItem("zg:wallet_policies", JSON.stringify(storedPolicies));
             }
 
-            // Update state
-            setPolicies(prev => prev.filter(p => p.id !== policyId));
-            toast.success('Policy deleted successfully');
+            toast.success("Policy removed successfully");
         } catch (error) {
-            console.error('Error deleting policy:', error);
-            toast.error('Failed to delete policy');
+            console.error("Error removing policy:", error);
+            toast.error("Failed to remove policy");
+        } finally {
+            setIsRemoving(false);
         }
-    };
+    }
 
     return (
         <div className="mt-4 space-y-3">
@@ -251,10 +277,13 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                         className="text-xs text-red-600"
-                                        onClick={() => handleDeletePolicy(policy.id)}
+                                        onClick={() => handleRemovePolicy(policy)}
                                     >
                                         <Trash2 className="mr-2 h-3.5 w-3.5" />
                                         <span>Delete</span>
+                                        {isRemoving && (
+                                            <Loader2 className="ml-2 h-3.5 w-3.5 animate-spin" />
+                                        )}
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>

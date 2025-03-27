@@ -295,3 +295,84 @@ export const createSmartContractClient = async (contractAddress: string): Promis
 export function bigIntReplacer(_key: string, value: any): any {
   return typeof value === 'bigint' ? value.toString() : value;
 }
+
+// Policy Assignment Types and Utils
+export type PolicyAssignment = {
+  policyId: string;
+  signerPublicKey: string;
+  walletId: string;
+  assignedAt: string;
+}
+
+export type StoredPolicyAssignments = {
+  [walletId: string]: PolicyAssignment[];
+}
+
+export const policyAssignmentUtils = {
+  getSignersForPolicy: (policyId: string, walletId: string): string[] => {
+    try {
+      const storedAssignments: StoredPolicyAssignments = JSON.parse(
+        localStorage.getItem("zg:policy_assignments") || "{}"
+      );
+
+      return (storedAssignments[walletId] || [])
+        .filter(assignment => assignment.policyId === policyId)
+        .map(assignment => assignment.signerPublicKey);
+    } catch (error) {
+      console.error("Error getting signers for policy:", error);
+      return [];
+    }
+  },
+
+  removePolicy: (policyId: string, walletId: string): string[] => {
+    try {
+      const storedAssignments: StoredPolicyAssignments = JSON.parse(
+        localStorage.getItem("zg:policy_assignments") || "{}"
+      );
+
+      // Get affected signers before removing
+      const affectedSigners = (storedAssignments[walletId] || [])
+        .filter(assignment => assignment.policyId === policyId)
+        .map(assignment => assignment.signerPublicKey);
+
+      // Remove all assignments for this policy
+      if (storedAssignments[walletId]) {
+        storedAssignments[walletId] = storedAssignments[walletId].filter(
+          assignment => assignment.policyId !== policyId
+        );
+        localStorage.setItem("zg:policy_assignments", JSON.stringify(storedAssignments));
+      }
+
+      return affectedSigners;
+    } catch (error) {
+      console.error("Error removing policy assignments:", error);
+      return [];
+    }
+  },
+
+  removeSigner: (signerPublicKey: string, walletId: string): string[] => {
+    try {
+      const storedAssignments: StoredPolicyAssignments = JSON.parse(
+        localStorage.getItem("zg:policy_assignments") || "{}"
+      );
+
+      // Get affected policies before removing
+      const affectedPolicies = (storedAssignments[walletId] || [])
+        .filter(assignment => assignment.signerPublicKey === signerPublicKey)
+        .map(assignment => assignment.policyId);
+
+      // Remove all assignments for this signer
+      if (storedAssignments[walletId]) {
+        storedAssignments[walletId] = storedAssignments[walletId].filter(
+          assignment => assignment.signerPublicKey !== signerPublicKey
+        );
+        localStorage.setItem("zg:policy_assignments", JSON.stringify(storedAssignments));
+      }
+
+      return affectedPolicies;
+    } catch (error) {
+      console.error("Error removing signer assignments:", error);
+      return [];
+    }
+  }
+};

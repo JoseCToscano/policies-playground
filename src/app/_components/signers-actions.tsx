@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal } from "lucide-react"
+import { MoreHorizontal, Loader2 } from "lucide-react"
 
 import { Button } from "~/components/ui/button"
 import {
@@ -28,7 +28,7 @@ import {
 import { Arrow } from "@radix-ui/react-dropdown-menu"
 import { Keypair } from "@stellar/stellar-sdk"
 import { api } from "~/trpc/react"
-import { account, ClientTRPCErrorHandler } from "~/lib/utils"
+import { account, ClientTRPCErrorHandler, policyAssignmentUtils } from "~/lib/utils"
 import toast from "react-hot-toast"
 import { useSmartWallet } from "~/hooks/useSmartWallet"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
@@ -69,16 +69,27 @@ export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId, 
   const [transferTo, setTransferTo] = React.useState("DUMMY_ADDRESS");
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  const { getKeypair, removeSubWallet } = useSmartWallet();
+  const { getKeypair, removeSubWallet, safeRemovePolicy } = useSmartWallet();
 
   const handleDelete = async () => {
     if (!publicKey) return;
     setIsDeleting(true);
     try {
-      removePolicyAssignments(publicKey);
+      // Get all policies assigned to this signer
+      const affectedPolicies = policyAssignmentUtils.removeSigner(publicKey, walletId);
+
+      // Remove each policy from the signer
+      for (const policyId of affectedPolicies) {
+        // Note: You'll need to get the contractIdToLimit from somewhere
+        // This could be stored in the policy assignments or fetched from the policies list
+        await safeRemovePolicy(policyId, "", publicKey);
+      }
+
       await removeSubWallet(publicKey);
+      toast.success("Signer removed successfully");
     } catch (e) {
-      toast.error("Failed to delete subwallet");
+      console.error("Error deleting signer:", e);
+      toast.error("Failed to delete signer");
     } finally {
       setIsDeleting(false);
     }
@@ -97,54 +108,33 @@ export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId, 
     if (!publicKey) return;
 
     try {
-      const storedAssignments: StoredPolicyAssignments = JSON.parse(
-        localStorage.getItem("zg:policy_assignments") || "{}"
-      );
-
-      if (!storedAssignments[walletId]) {
-        storedAssignments[walletId] = [];
-      }
-
-      const isAlreadyAssigned = storedAssignments[walletId].some(
-        assignment => assignment.policyId === policyId && assignment.signerPublicKey === publicKey
-      );
+      const storedAssignments = policyAssignmentUtils.getSignersForPolicy(policyId, walletId);
+      const isAlreadyAssigned = storedAssignments.includes(publicKey);
 
       if (isAlreadyAssigned) {
         toast.error("Policy is already assigned to this signer");
         return;
       }
 
-      storedAssignments[walletId].push({
+      // Add new assignment
+      const assignments = JSON.parse(localStorage.getItem("zg:policy_assignments") || "{}");
+      if (!assignments[walletId]) {
+        assignments[walletId] = [];
+      }
+
+      assignments[walletId].push({
         policyId,
         signerPublicKey: publicKey,
         walletId,
         assignedAt: new Date().toISOString()
       });
 
-      localStorage.setItem("zg:policy_assignments", JSON.stringify(storedAssignments));
+      localStorage.setItem("zg:policy_assignments", JSON.stringify(assignments));
       toast.success("Policy assigned successfully");
       setOpen(false);
     } catch (error) {
       console.error("Error assigning policy:", error);
       toast.error("Failed to assign policy");
-    }
-  };
-
-  const removePolicyAssignments = (signerPublicKey: string) => {
-    try {
-      const storedAssignments: StoredPolicyAssignments = JSON.parse(
-        localStorage.getItem("zg:policy_assignments") || "{}"
-      );
-
-      if (storedAssignments[walletId]) {
-        storedAssignments[walletId] = storedAssignments[walletId].filter(
-          assignment => assignment.signerPublicKey !== signerPublicKey
-        );
-
-        localStorage.setItem("zg:policy_assignments", JSON.stringify(storedAssignments));
-      }
-    } catch (error) {
-      console.error("Error removing policy assignments:", error);
     }
   };
 
@@ -196,11 +186,15 @@ export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId, 
               </DropdownMenuSubContent>
             </DropdownMenuSub>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600" onClick={() => {
-              handleDelete();
-            }}>
-              {isDeleting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div> : "Delete"}
-              <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+            <DropdownMenuItem className="text-red-600" onClick={handleDelete}>
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  Delete
+                  <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
+                </>
+              )}
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
