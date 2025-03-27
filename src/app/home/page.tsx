@@ -155,7 +155,6 @@ export default function PasskeyCreation() {
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <div className="mx-auto max-w-6xl px-4 py-6">
-        <AccountSwitcher />
         <div className="mt-6 grid gap-6 md:grid-cols-[240px_1fr]">
           {/* Left Section */}
           <div className="space-y-4">

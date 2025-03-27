@@ -305,12 +305,12 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
 
     // Set initial parameter value based on parameter type and name
     const getInitialParamValue = useCallback((param: any) => {
-        // For address parameters with specific names, use the selected signer
-        if (shouldUseDefaultAddressValue(param.name, param.type) && selectedSigner) {
-            return selectedSigner;
+        // For address parameters with specific names, use the main wallet ID regardless of selected signer
+        if (shouldUseDefaultAddressValue(param.name, param.type) && mainWalletId) {
+            return mainWalletId;
         }
         return "";
-    }, [selectedSigner]);
+    }, [mainWalletId]);
 
     // When function selection changes, initialize params with default values
     useEffect(() => {
@@ -325,24 +325,6 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
             }
         }
     }, [selectedFunction, metadata, getInitialParamValue]);
-
-    // When selected signer changes, update function parameters that use the signer's address
-    useEffect(() => {
-        if (selectedFunction && metadata && selectedSigner) {
-            const fn = metadata.functions.find((f: any) => f.name === selectedFunction);
-            if (fn) {
-                setFunctionParams(prev => {
-                    const newParams = { ...prev };
-                    fn.parameters.forEach((param: any) => {
-                        if (shouldUseDefaultAddressValue(param.name, param.type)) {
-                            newParams[param.name] = selectedSigner;
-                        }
-                    });
-                    return newParams;
-                });
-            }
-        }
-    }, [selectedSigner, selectedFunction, metadata]);
 
     // Prepare parameters for contract call
     const prepareCallParameters = () => {
@@ -424,9 +406,12 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
     };
 
     // Helper to get placeholder for parameter type
-    const getPlaceholder = (type: string): string => {
+    const getPlaceholder = (type: string, paramName: string): string => {
         switch (type) {
             case 'address':
+                if (shouldUseDefaultAddressValue(paramName, type)) {
+                    return 'Main wallet address (fixed)';
+                }
                 return 'G... (56 characters)';
             case 'i128':
             case 'u128':
@@ -844,7 +829,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                                                             });
                                                                         }
                                                                     }}
-                                                                    placeholder={shouldUseDefaultAddressValue(param.name, param.type) ? "Current wallet address" : getPlaceholder(param.type)}
+                                                                    placeholder={getPlaceholder(param.type, param.name)}
                                                                     className={cn(
                                                                         "font-mono text-sm h-9",
                                                                         paramErrors[param.name] && "border-red-500"
@@ -862,7 +847,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
 
                                             <div className="flex flex-col gap-2 pt-3">
                                                 <div className="flex items-center gap-2">
-                                                    <Label className="text-xs text-gray-500 whitespace-nowrap">Call using:</Label>
+                                                    <Label className="text-xs text-gray-500 whitespace-nowrap">Sign with:</Label>
                                                     <div className="flex-1">
                                                         <Combobox
                                                             items={signerOptions}
@@ -875,6 +860,9 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                                         />
                                                     </div>
                                                 </div>
+                                                <p className="text-xs text-muted-foreground -mt-1">
+                                                    The transaction will be signed by the selected signer, but source/from parameters will use the main wallet address.
+                                                </p>
 
                                                 <Button
                                                     className={cn(
