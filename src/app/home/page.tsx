@@ -153,115 +153,133 @@ export default function PasskeyCreation() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      <div className="mx-auto max-w-6xl px-4 py-6">
-        <div className="mt-6 grid gap-6 md:grid-cols-[240px_1fr]">
-          {/* Left Section */}
-          <div className="space-y-4">
-            <div className="rounded-lg border border-gray-100 bg-white p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-sm font-medium text-gray-600">Total Balance</h2>
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <div className="mx-auto px-4 py-6">
+        <div className="mt-6 grid gap-6 md:grid-cols-[280px_1fr]">
+          {/* Left Section - Dashboard Sidebar */}
+          <div className="flex flex-col space-y-4">
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+              {/* Wallet Header */}
+              <div className="border-b border-gray-100 bg-gray-50 p-4">
+                <h2 className="text-sm font-medium text-gray-700">Smart Wallet</h2>
                 {contractId && (
-                  <button
-                    onClick={() => { fundWallet(contractId!) }}
-                    className="text-xs text-gray-500 hover:text-gray-900"
-                  >
-                    {isFunding ? "Funding..." : "Fund wallet"}
-                  </button>
+                  <div className="mt-1 flex items-center space-x-1.5">
+                    <span className="text-xs text-gray-500 font-mono">{shortAddress(contractId)}</span>
+                    <button
+                      onClick={() => copyToClipboard(contractId)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 )}
               </div>
 
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center">
-                  <span className="text-xl text-gray-900 font-normal tracking-tight">
-                    <span className="text-gray-400 mr-1.5">$</span>
-                    {fromStroops(contractBalance?.[USDC] ?? "0", 2)} USD
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <span className="text-xl text-gray-900 font-normal tracking-tight">
-                    <span className="text-gray-400 mr-1.5">€</span>
-                    {fromStroops(contractBalance?.[EURC] ?? "0", 2)} EUR
-                  </span>
-                </div>
-                <div className="pt-3 border-t border-gray-50">
-                  <span className="text-sm text-gray-500">
-                    {fromStroops(balance)} XLM
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-medium text-gray-600">
-                    {contractId ? "Smart Wallet" : "Connect Wallet"}
-                  </h3>
+              {/* Wallet Balance Section */}
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-medium text-gray-500">Total Balance</h3>
                   {contractId && (
-                    <div className="flex items-center space-x-1.5">
-                      <span className="text-xs text-gray-500 font-mono">{shortAddress(contractId)}</span>
-                      <button
-                        onClick={() => copyToClipboard(contractId)}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => { fundWallet(contractId!) }}
+                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                    >
+                      {isFunding ? (
+                        <span className="flex items-center">
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          Funding...
+                        </span>
+                      ) : "Fund wallet"}
+                    </button>
                   )}
                 </div>
 
-                {!contractId && keyId && (
-                  <Button
-                    onClick={() => connect(keyId!)}
-                    className="w-full bg-gray-900 text-xs text-white hover:bg-black"
-                  >
-                    <ScanFaceIcon className="mr-2 h-3.5 w-3.5" />
-                    Connect
-                  </Button>
-                )}
-                {!contractId && (
-                  <Button
-                    onClick={() => create()}
-                    className="w-full bg-gray-900 text-xs text-white hover:bg-black"
-                  >
-                    <ScanFaceIcon className="mr-2 h-3.5 w-3.5" />
-                    Create Smart Wallet
-                  </Button>
-                )}
-                {contractId && (
-                  <Button
-                    onClick={handleAddSigner}
-                    className="w-full bg-gray-900 text-xs text-white hover:bg-black"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                        Adding Signer...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="mr-2 h-3.5 w-3.5" />
-                        Add Signer
-                      </>
-                    )}
-                  </Button>
-                )}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center">
+                    <span className="text-base text-gray-900 font-medium tracking-tight">
+                      <span className="text-gray-400 mr-1.5">$</span>
+                      {fromStroops(contractBalance?.[USDC] ?? "0", 2)} USD
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-base text-gray-900 font-medium tracking-tight">
+                      <span className="text-gray-400 mr-1.5">€</span>
+                      {fromStroops(contractBalance?.[EURC] ?? "0", 2)} EUR
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-gray-50">
+                    <span className="text-xs text-gray-500">
+                      {fromStroops(balance)} XLM
+                    </span>
+                  </div>
+                </div>
+
+                {/* Wallet Actions */}
+                <div className="space-y-2">
+                  {!contractId && keyId && (
+                    <Button
+                      onClick={() => connect(keyId!)}
+                      className="w-full bg-indigo-600 text-xs text-white hover:bg-indigo-700"
+                    >
+                      <ScanFaceIcon className="mr-2 h-3.5 w-3.5" />
+                      Connect
+                    </Button>
+                  )}
+                  {!contractId && (
+                    <Button
+                      onClick={() => create()}
+                      className="w-full bg-indigo-600 text-xs text-white hover:bg-indigo-700"
+                    >
+                      <ScanFaceIcon className="mr-2 h-3.5 w-3.5" />
+                      Create Smart Wallet
+                    </Button>
+                  )}
+                  {contractId && (
+                    <Button
+                      onClick={handleAddSigner}
+                      className="w-full bg-indigo-600 text-xs text-white hover:bg-indigo-700"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                          Adding Signer...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="mr-2 h-3.5 w-3.5" />
+                          Add Signer
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
-            {contractId && <PoliciesVault
-              walletId={contractId}
-              onPolicyAttach={handleAttachPolicy}
-            />}
+
+            {/* Policies Section */}
+            {contractId && (
+              <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+                <PoliciesVault
+                  walletId={contractId}
+                  onPolicyAttach={handleAttachPolicy}
+                />
+              </div>
+            )}
           </div>
 
           {/* Main Content */}
           <div className="space-y-4">
             {contractId && (
               <>
-                <SignersList walletId={contractId} />
-                <ContractCall
-                  mainWalletId={contractId}
-                />
+                <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-4">
+                  <SignersList walletId={contractId} />
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-4">
+                  <ContractCall
+                    mainWalletId={contractId}
+                  />
+                </div>
               </>
             )}
           </div>

@@ -203,10 +203,10 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
 
     return (
         <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
                 <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-medium text-gray-600">Policies</h3>
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4 bg-gray-50 border border-gray-100 text-gray-600">
+                    <h3 className="text-sm font-medium text-gray-700">Policies</h3>
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0 h-4 bg-gray-100 border border-gray-200 text-gray-600">
                         {policies.length}
                     </Badge>
                 </div>
@@ -214,26 +214,26 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
                     onClick={() => setIsOpen(true)}
                     variant="ghost"
                     size="sm"
-                    className="text-xs h-7 px-2"
+                    className="text-xs h-7 px-2 text-indigo-600 hover:text-indigo-700 hover:bg-gray-100"
                 >
                     <Plus className="mr-1 h-3 w-3" />
                     Add
                 </Button>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="p-4 space-y-2">
                 {policies.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-gray-100 p-3 text-center">
+                    <div className="rounded-md border border-dashed border-gray-200 p-3 text-center">
                         <p className="text-xs text-gray-500">No policies attached</p>
                     </div>
                 ) : (
                     policies.map((policy) => (
                         <div
                             key={policy.id}
-                            className="flex items-center justify-between rounded-md border border-gray-100 bg-white p-2"
+                            className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-2 hover:bg-gray-50"
                         >
                             <div className="flex items-center gap-2">
-                                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gray-50 border border-gray-100">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gray-50 border border-gray-200">
                                     <FileText className="h-3.5 w-3.5 text-gray-500" />
                                 </div>
                                 <div>
