@@ -1,51 +1,56 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { Badge } from '~/components/ui/badge'
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import * as z from "zod"
+import { Controller, useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner"
+import { Keypair, Operation, ScVal, Server, SorobanRpc, TimeoutInfinite, Transaction, TransactionBuilder, Networks, Asset, Memo, BASE_FEE, Account } from '@stellar/stellar-sdk';
+import { api } from "~/trpc/react"
+import { useSep10 } from "~/hooks/useSep10";
+import { SignerKey, SignerLimits, SignerStore, useSmartWallet } from "~/hooks/useSmartWallet";
+import { ColumnDef } from "@tanstack/react-table"
+import { ethers } from "ethers"
+import dayjs from "dayjs"
+import relativeTime from "dayjs/plugin/relativeTime";
+import { FunctionForm } from "../_components/function-form";
+import { TransactionsDialog } from "../_components/transactions";
+import { TransfersDialog } from "../_components/transfers";
+
+dayjs.extend(relativeTime);
+
+if (typeof window !== 'undefined') {
+  console.log('💫 Smart Wallet Demo App v0.0.1');
+}
+
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { Label } from "~/components/ui/label"
+import { Checkbox } from "~/components/ui/checkbox"
+import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { DataTable } from "~/components/ui/data-table"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
-import { useSmartWallet } from '~/hooks/useSmartWallet'
-import { account, bigIntReplacer, copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
-import {
-  Copy,
-  DollarSign,
-  Euro,
-  ScanFaceIcon,
-  Plus,
-  Loader2,
-  Share2,
-  MoreVertical,
-  Pencil,
-  QrCode,
-  Download,
-  Terminal,
-  ArrowRightLeft,
-  Trash2,
-  FileText,
-  Code2,
-  CircleDollarSign,
-  EuroIcon,
-  StarIcon,
-  Combine
-} from "lucide-react"
-import { SignersActions } from '../_components/signers-actions'
-import { Keypair } from '@stellar/stellar-sdk'
-import { env } from '~/env'
-import { useSep10 } from '~/hooks/useSep10'
-import { loadStripeOnramp } from '@stripe/crypto';
-import { OnrampElement } from '~/app/_components/stripe-onramp'
-import { CryptoElements } from '~/app/_components/stripe-onramp'
-import axios from 'axios'
-import { AccountSwitcher } from '~/app/_components/account-switcher'
-import { api } from '~/trpc/react'
-import { toast } from 'react-hot-toast'
 import {
   Dialog,
   DialogContent,
@@ -53,20 +58,29 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter
 } from "~/components/ui/dialog"
 import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { cn } from '~/lib/utils'
-import { type RouterOutputs } from "~/trpc/react";
+import { Textarea } from "~/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
+import { Badge } from "~/components/ui/badge"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "~/components/ui/tooltip"
-import { SAC_FUNCTION_DOCS } from "~/lib/constants/sac";
-import { addressToScVal, boolToScVal, getDefaultAddressValue, i128ToScVal, numberToI128, numberToU64, stringToSymbol, u128ToScVal, u32ToScVal } from "~/lib/scHelper";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "~/components/ui/command"
+import { cn } from "~/lib/utils"
+
+import { PlusIcon, Laptop, ArrowUpDown, ChevronDown, CheckIcon, FileText, MoreVertical, Pencil, X, Loader2, StarIcon, CircleDollarSign, EuroIcon, Wrench, Server, Lock, ChevronsRightLeft, Link2, Trash2, Copy, QrCode, Share2, ArrowRightLeft, Plus, RefreshCcw, Clock, Key, Award, DollarSign, Ban, Wallet, Home, Bookmark, Combine, Users, User, Activity } from "lucide-react"
+import { SignersActions } from '../_components/signers-actions'
+import { account, bigIntReplacer, copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
@@ -96,6 +110,17 @@ type Policy = {
 
 type StoredPolicies = {
   [walletId: string]: Policy[];
+}
+
+// For storing attached policies
+type AttachedPolicy = {
+  policyId: string;
+  contractIdToLimit: string;
+  attachedAt: string;
+}
+
+type StoredAttachedPolicies = {
+  [signerPublicKey: string]: AttachedPolicy[];
 }
 
 interface EnumVariant {
@@ -148,161 +173,233 @@ function SignerModal({ signer, policies, onClose }: {
   onClose: () => void
 }) {
   const [attachedPolicies, setAttachedPolicies] = useState<Policy[]>([]);
+  const [isAttachPolicyModalOpen, setIsAttachPolicyModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const loadAttachedPolicies = useCallback(() => {
+    // Get the attached policies data for this signer
+    const attachedPoliciesData: StoredAttachedPolicies = JSON.parse(
+      localStorage.getItem("zg:attached_policies") || "{}"
+    );
+
+    const signerAttachedPolicies = attachedPoliciesData[signer.publicKey] || [];
+
+    // Map the attached policies to full policy objects
+    const fullPolicies = signerAttachedPolicies.map(ap => {
+      const policy = policies.find(p => p.id === ap.policyId);
+      return policy ? {
+        ...policy,
+        contractIdToLimit: ap.contractIdToLimit
+      } : null;
+    }).filter(Boolean) as (Policy & { contractIdToLimit: string })[];
+
+    setAttachedPolicies(fullPolicies);
+  }, [signer.publicKey, policies]);
 
   useEffect(() => {
-    // TODO: Load attached policies for this signer
-    setAttachedPolicies([]);
-  }, [signer]);
+    loadAttachedPolicies();
+  }, [loadAttachedPolicies, refreshKey]);
+
+  const handleAttachPolicy = () => {
+    setIsAttachPolicyModalOpen(true);
+  };
+
+  const handlePolicyAttached = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleRemovePolicy = (policyId: string, contractIdToLimit: string) => {
+    // Remove from localStorage
+    const attachedPoliciesData: StoredAttachedPolicies = JSON.parse(
+      localStorage.getItem("zg:attached_policies") || "{}"
+    );
+
+    if (attachedPoliciesData[signer.publicKey]) {
+      attachedPoliciesData[signer.publicKey] = attachedPoliciesData[signer.publicKey]
+        .filter(ap => !(ap.policyId === policyId && ap.contractIdToLimit === contractIdToLimit));
+
+      localStorage.setItem("zg:attached_policies", JSON.stringify(attachedPoliciesData));
+
+      // Refresh the list
+      setRefreshKey(prev => prev + 1);
+      toast.success("Policy removed successfully");
+    }
+  };
 
   return (
-    <DialogContent className="max-w-4xl p-0 gap-0">
-      <div className="grid grid-cols-[1fr_300px]">
-        {/* Main Content */}
-        <div className="p-6">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                <span className="text-sm font-medium text-gray-600">
-                  {signer.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-semibold flex items-center gap-2">
-                  {signer.name}
-                  <Badge className="bg-gray-100 text-xs font-normal text-gray-600">
-                    {signer.purpose}
-                  </Badge>
-                </DialogTitle>
-                <DialogDescription className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">{shortAddress(signer.publicKey)}</span>
-                  <button
-                    onClick={() => copyToClipboard(signer.publicKey)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="mt-6 space-y-6">
-            {/* Destination URL Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium text-gray-900">Destination URL</Label>
-                <Badge variant="outline" className="text-xs font-normal">
-                  PRO
-                </Badge>
-              </div>
-              <div className="flex gap-2">
-                <Input value={signer.publicKey} readOnly className="font-mono text-sm" />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => copyToClipboard(signer.publicKey)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Policies Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-sm font-medium text-gray-900 block">Attached Policies</Label>
-                  <p className="text-sm text-gray-500 mt-1">Manage policies that control this signer's permissions</p>
+    <>
+      <DialogContent className="max-w-4xl p-0 gap-0">
+        <div className="grid grid-cols-[1fr_300px]">
+          {/* Main Content */}
+          <div className="p-6">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+                  <span className="text-sm font-medium text-gray-600">
+                    {signer.name.charAt(0).toUpperCase()}
+                  </span>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => { }}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Attach Policy
-                </Button>
+                <div>
+                  <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+                    {signer.name}
+                    <Badge className="bg-gray-100 text-xs font-normal text-gray-600">
+                      {signer.purpose}
+                    </Badge>
+                  </DialogTitle>
+                  <DialogDescription className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">{shortAddress(signer.publicKey)}</span>
+                    <button
+                      onClick={() => copyToClipboard(signer.publicKey)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="mt-6 space-y-6">
+              {/* Destination URL Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-900">Destination URL</Label>
+                  <Badge variant="outline" className="text-xs font-normal">
+                    PRO
+                  </Badge>
+                </div>
+                <div className="flex gap-2">
+                  <Input value={signer.publicKey} readOnly className="font-mono text-sm" />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(signer.publicKey)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
-              {attachedPolicies.length === 0 ? (
-                <div className="rounded-md border border-dashed border-gray-200 p-8 text-center">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-4">
-                    <FileText className="h-6 w-6 text-gray-400" />
+              {/* Policies Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-900 block">Attached Policies</Label>
+                    <p className="text-sm text-gray-500 mt-1">Manage policies that control this signer's permissions</p>
                   </div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">No policies attached</h3>
-                  <p className="text-sm text-gray-500 mb-4">Add policies to control this signer's permissions</p>
-                  <Button variant="outline" size="sm" onClick={() => { }}>
+                  <Button variant="outline" size="sm" onClick={handleAttachPolicy}>
                     <Plus className="h-4 w-4 mr-2" />
                     Attach Policy
                   </Button>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {attachedPolicies.map((policy) => (
-                    <div
-                      key={policy.id}
-                      className="flex items-center justify-between rounded-md border border-gray-100 bg-gray-50 p-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white">
-                          <FileText className="h-5 w-5 text-gray-500" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-900">{policy.name}</h4>
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <span>{shortAddress(policy.content)}</span>
-                            <button
-                              onClick={() => copyToClipboard(policy.content)}
-                              className="text-gray-400 hover:text-gray-600"
-                            >
-                              <Copy className="h-3 w-3" />
-                            </button>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">{policy.description}</p>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+
+                {attachedPolicies.length === 0 ? (
+                  <div className="rounded-md border border-dashed border-gray-200 p-8 text-center">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                      <FileText className="h-6 w-6 text-gray-400" />
                     </div>
-                  ))}
-                </div>
-              )}
+                    <h3 className="text-sm font-medium text-gray-900 mb-1">No policies attached</h3>
+                    <p className="text-sm text-gray-500 mb-4">Add policies to control this signer's permissions</p>
+                    <Button variant="outline" size="sm" onClick={handleAttachPolicy}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Attach Policy
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {attachedPolicies.map((policy) => (
+                      <div
+                        key={`${policy.id}-${(policy as any).contractIdToLimit}`}
+                        className="flex items-center justify-between rounded-md border border-gray-100 bg-gray-50 p-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-white">
+                            <FileText className="h-5 w-5 text-gray-500" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-900">{policy.name}</h4>
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                              <span>{shortAddress(policy.content)}</span>
+                              <button
+                                onClick={() => copyToClipboard(policy.content)}
+                                className="text-gray-400 hover:text-gray-600"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                              <span className="font-medium">Limiting:</span>
+                              <span className="font-mono">{shortAddress((policy as any).contractIdToLimit)}</span>
+                              <button
+                                onClick={() => copyToClipboard((policy as any).contractIdToLimit)}
+                                className="text-gray-400 hover:text-gray-600"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">{policy.description}</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => handleRemovePolicy(policy.id, (policy as any).contractIdToLimit)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel */}
+          <div className="border-l border-gray-100 p-6 space-y-6 bg-gray-50">
+            {/* Quick Actions */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-gray-900">Quick Actions</h4>
+              <div className="grid gap-2">
+                <Button variant="outline" className="w-full justify-start">
+                  <QrCode className="h-4 w-4 mr-2" />
+                  QR Code
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <ArrowRightLeft className="h-4 w-4 mr-2" />
+                  Transfer
+                </Button>
+              </div>
+            </div>
+
+            {/* Danger Zone */}
+            <div className="pt-6 border-t border-gray-200">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-red-600">Danger Zone</h4>
+                <p className="text-xs text-gray-500">These actions cannot be undone</p>
+                <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700 border-red-200">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove Signer
+                </Button>
+              </div>
             </div>
           </div>
         </div>
+      </DialogContent>
 
-        {/* Right Panel */}
-        <div className="border-l border-gray-100 p-6 space-y-6 bg-gray-50">
-          {/* Quick Actions */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-gray-900">Quick Actions</h4>
-            <div className="grid gap-2">
-              <Button variant="outline" className="w-full justify-start">
-                <QrCode className="h-4 w-4 mr-2" />
-                QR Code
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <ArrowRightLeft className="h-4 w-4 mr-2" />
-                Transfer
-              </Button>
-            </div>
-          </div>
-
-          {/* Danger Zone */}
-          <div className="pt-6 border-t border-gray-200">
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-red-600">Danger Zone</h4>
-              <p className="text-xs text-gray-500">These actions cannot be undone</p>
-              <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700 border-red-200">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Remove Signer
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </DialogContent>
+      <AttachPolicyModal
+        isOpen={isAttachPolicyModalOpen}
+        onClose={() => setIsAttachPolicyModalOpen(false)}
+        signer={signer}
+        policies={policies}
+        onPolicyAttached={handlePolicyAttached}
+      />
+    </>
   );
 }
 
@@ -1282,50 +1379,58 @@ function SignersList({ walletId }: { walletId: string }) {
 function PoliciesVault({ walletId }: { walletId: string }) {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
 
-  useEffect(() => {
+  const loadPolicies = useCallback(() => {
     const storedPolicies: StoredPolicies = JSON.parse(localStorage.getItem("zg:wallet_policies") || "{}");
     setPolicies(storedPolicies[walletId] || []);
   }, [walletId]);
 
-  const handleAddPolicy = () => {
-    const name = prompt("Enter a name for this policy:");
-    const description = prompt("Enter a description for this policy:");
-    const address = prompt("Enter the smart contract address:");
+  useEffect(() => {
+    loadPolicies();
+  }, [loadPolicies]);
 
-    if (!name || !description || !address) {
-      toast.error("Please provide all policy details");
-      return;
-    }
+  const handleEditPolicy = (policy: Policy) => {
+    setEditingPolicy(policy);
+    setIsAddModalOpen(true);
+  };
 
-    setIsAdding(true);
+  const handleDeletePolicy = (policyId: string) => {
     try {
-      const newPolicy: Policy = {
-        id: crypto.randomUUID(),
-        name,
-        type: 'contract',
-        content: address,
-        createdAt: new Date().toISOString(),
-        description
-      };
-
       // Update localStorage
       const storedPolicies: StoredPolicies = JSON.parse(localStorage.getItem("zg:wallet_policies") || "{}");
-      if (!storedPolicies[walletId]) {
-        storedPolicies[walletId] = [];
-      }
-      storedPolicies[walletId].push(newPolicy);
-      localStorage.setItem("zg:wallet_policies", JSON.stringify(storedPolicies));
 
-      // Update state
-      setPolicies(prev => [...prev, newPolicy]);
-      toast.success('Policy added successfully');
+      if (storedPolicies[walletId]) {
+        storedPolicies[walletId] = storedPolicies[walletId].filter(p => p.id !== policyId);
+        localStorage.setItem("zg:wallet_policies", JSON.stringify(storedPolicies));
+
+        // Also remove any attached policies that use this policy
+        const attachedPolicies: StoredAttachedPolicies = JSON.parse(
+          localStorage.getItem("zg:attached_policies") || "{}"
+        );
+
+        for (const signerKey in attachedPolicies) {
+          attachedPolicies[signerKey] = attachedPolicies[signerKey].filter(ap => ap.policyId !== policyId);
+          if (attachedPolicies[signerKey].length === 0) {
+            delete attachedPolicies[signerKey];
+          }
+        }
+
+        localStorage.setItem("zg:attached_policies", JSON.stringify(attachedPolicies));
+
+        // Update state
+        setPolicies(prev => prev.filter(p => p.id !== policyId));
+        toast.success('Policy deleted successfully');
+      }
     } catch (error) {
-      console.error('Error adding policy:', error);
-      toast.error('Failed to add policy');
-    } finally {
-      setIsAdding(false);
+      console.error('Error deleting policy:', error);
+      toast.error('Failed to delete policy');
     }
+  };
+
+  const handlePolicySaved = (policy: Policy) => {
+    loadPolicies();
   };
 
   return (
@@ -1338,7 +1443,10 @@ function PoliciesVault({ walletId }: { walletId: string }) {
           </Badge>
         </div>
         <Button
-          onClick={handleAddPolicy}
+          onClick={() => {
+            setEditingPolicy(null);
+            setIsAddModalOpen(true);
+          }}
           variant="ghost"
           size="sm"
           className="text-xs h-7 px-2"
@@ -1393,7 +1501,7 @@ function PoliciesVault({ walletId }: { walletId: string }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuItem className="text-xs">
+                  <DropdownMenuItem className="text-xs" onClick={() => handleEditPolicy(policy)}>
                     <Pencil className="mr-2 h-3.5 w-3.5" />
                     <span>Edit</span>
                   </DropdownMenuItem>
@@ -1406,7 +1514,10 @@ function PoliciesVault({ walletId }: { walletId: string }) {
                     <span>Copy Address</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-xs text-red-600">
+                  <DropdownMenuItem
+                    className="text-xs text-red-600"
+                    onClick={() => handleDeletePolicy(policy.id)}
+                  >
                     <Trash2 className="mr-2 h-3.5 w-3.5" />
                     <span>Delete</span>
                   </DropdownMenuItem>
@@ -1416,7 +1527,350 @@ function PoliciesVault({ walletId }: { walletId: string }) {
           ))
         )}
       </div>
+
+      <PolicyModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        walletId={walletId}
+        editPolicy={editingPolicy}
+        onPolicySaved={handlePolicySaved}
+      />
     </div>
+  );
+}
+
+function PolicyModal({
+  isOpen,
+  onClose,
+  walletId,
+  editPolicy = null,
+  onPolicySaved
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  walletId: string;
+  editPolicy?: Policy | null;
+  onPolicySaved?: (policy: Policy) => void;
+}) {
+  const [name, setName] = useState(editPolicy?.name || "");
+  const [description, setDescription] = useState(editPolicy?.description || "");
+  const [address, setAddress] = useState(editPolicy?.content || "");
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editPolicy) {
+        setName(editPolicy.name);
+        setDescription(editPolicy.description);
+        setAddress(editPolicy.content);
+      } else {
+        setName("");
+        setDescription("");
+        setAddress("");
+      }
+    }
+  }, [isOpen, editPolicy]);
+
+  const handleSave = () => {
+    if (!name || !description || !address) {
+      toast.error("Please provide all policy details");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const policy: Policy = editPolicy
+        ? {
+          ...editPolicy,
+          name,
+          description,
+          content: address
+        }
+        : {
+          id: crypto.randomUUID(),
+          name,
+          type: 'contract',
+          content: address,
+          createdAt: new Date().toISOString(),
+          description
+        };
+
+      // Update localStorage
+      const storedPolicies: StoredPolicies = JSON.parse(localStorage.getItem("zg:wallet_policies") || "{}");
+
+      if (!storedPolicies[walletId]) {
+        storedPolicies[walletId] = [];
+      }
+
+      if (editPolicy) {
+        // Replace existing policy
+        const index = storedPolicies[walletId].findIndex(p => p.id === editPolicy.id);
+        if (index !== -1) {
+          storedPolicies[walletId][index] = policy;
+        }
+      } else {
+        // Add new policy
+        storedPolicies[walletId].push(policy);
+      }
+
+      localStorage.setItem("zg:wallet_policies", JSON.stringify(storedPolicies));
+
+      toast.success(`Policy ${editPolicy ? 'updated' : 'added'} successfully`);
+      if (onPolicySaved) {
+        onPolicySaved(policy);
+      }
+      onClose();
+    } catch (error) {
+      console.error('Error saving policy:', error);
+      toast.error(`Failed to ${editPolicy ? 'update' : 'add'} policy`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) onClose();
+    }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{editPolicy ? 'Edit Policy' : 'Add New Policy'}</DialogTitle>
+          <DialogDescription>
+            {editPolicy
+              ? 'Update policy details below'
+              : 'Create a new policy to limit contract interactions'
+            }
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label htmlFor="name">Policy Name</Label>
+            <Input
+              id="name"
+              placeholder="Enter policy name"
+              value={name}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              placeholder="What does this policy do?"
+              value={description}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+              className="resize-none"
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="address">Contract Address (Policy ID)</Label>
+            <Input
+              id="address"
+              placeholder="Enter contract address"
+              value={address}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAddress(e.target.value)}
+              className="font-mono text-sm"
+            />
+          </div>
+        </div>
+        <DialogFooter className="flex space-x-2 sm:justify-end">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            className="mt-4"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            className="mt-4"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {editPolicy ? 'Updating...' : 'Saving...'}
+              </>
+            ) : (
+              <>{editPolicy ? 'Update' : 'Save'}</>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AttachPolicyModal({
+  isOpen,
+  onClose,
+  signer,
+  policies,
+  onPolicyAttached
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  signer: SignerInfo;
+  policies: Policy[];
+  onPolicyAttached?: () => void;
+}) {
+  const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
+  const [contractAddress, setContractAddress] = useState<string>("");
+  const [isAttaching, setIsAttaching] = useState(false);
+  const [openSelect, setOpenSelect] = useState(false);
+
+  const { attachPolicy } = useSmartWallet();
+
+  const handleAttach = async () => {
+    if (!selectedPolicy || !contractAddress) {
+      toast.error("Please select a policy and enter a contract address");
+      return;
+    }
+
+    setIsAttaching(true);
+    try {
+      await attachPolicy(signer.publicKey, contractAddress, selectedPolicy.content);
+
+      // Save to localStorage
+      const attachedPolicies: StoredAttachedPolicies = JSON.parse(
+        localStorage.getItem("zg:attached_policies") || "{}"
+      );
+
+      if (!attachedPolicies[signer.publicKey]) {
+        attachedPolicies[signer.publicKey] = [];
+      }
+
+      attachedPolicies[signer.publicKey].push({
+        policyId: selectedPolicy.id,
+        contractIdToLimit: contractAddress,
+        attachedAt: new Date().toISOString()
+      });
+
+      localStorage.setItem("zg:attached_policies", JSON.stringify(attachedPolicies));
+
+      toast.success("Policy attached successfully");
+      if (onPolicyAttached) {
+        onPolicyAttached();
+      }
+      onClose();
+    } catch (error) {
+      console.error('Error attaching policy:', error);
+      toast.error("Failed to attach policy");
+    } finally {
+      setIsAttaching(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) onClose();
+    }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Attach Policy</DialogTitle>
+          <DialogDescription>
+            Attach a policy to limit contract interactions for this signer
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label htmlFor="policy">Select Policy</Label>
+            <Popover open={openSelect} onOpenChange={setOpenSelect}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openSelect}
+                  className="w-full justify-between"
+                >
+                  {selectedPolicy ? selectedPolicy.name : "Select a policy..."}
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0">
+                <Command>
+                  <CommandInput placeholder="Search policies..." />
+                  <CommandEmpty>No policies found</CommandEmpty>
+                  <CommandGroup>
+                    {policies.map((policy) => (
+                      <CommandItem
+                        key={policy.id}
+                        value={policy.id}
+                        onSelect={() => {
+                          setSelectedPolicy(policy);
+                          setOpenSelect(false);
+                        }}
+                      >
+                        <CheckIcon
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedPolicy?.id === policy.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {policy.name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="contract">Contract to Limit</Label>
+            <Input
+              id="contract"
+              placeholder="Enter contract address to limit"
+              value={contractAddress}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContractAddress(e.target.value)}
+              className="font-mono text-sm"
+            />
+          </div>
+          {selectedPolicy && (
+            <div className="rounded-md bg-gray-50 p-3">
+              <h4 className="text-sm font-medium text-gray-900">{selectedPolicy.name}</h4>
+              <p className="text-xs text-gray-500 mt-1">{selectedPolicy.description}</p>
+              <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                <span className="font-mono">{shortAddress(selectedPolicy.content)}</span>
+                <button
+                  onClick={() => copyToClipboard(selectedPolicy.content)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <Copy className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter className="flex space-x-2 sm:justify-end">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            className="mt-4"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleAttach}
+            disabled={isAttaching || !selectedPolicy || !contractAddress}
+            className="mt-4"
+          >
+            {isAttaching ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Attaching...
+              </>
+            ) : (
+              "Attach Policy"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
