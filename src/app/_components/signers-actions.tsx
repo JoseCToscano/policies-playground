@@ -32,7 +32,16 @@ import { api } from "~/trpc/react"
 import { account, ClientTRPCErrorHandler, copyToClipboard } from "~/lib/utils"
 import toast from "react-hot-toast"
 import { useSmartWallet } from "~/hooks/useSmartWallet"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "~/components/ui/dialog"
 
 const labels = [
   "feature",
@@ -54,7 +63,6 @@ interface SignersActionsProps {
 export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId }: SignersActionsProps) {
   const [open, setOpen] = React.useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = React.useState(false);
-  const [shareDialogOpen, setShareDialogOpen] = React.useState(false);
   const [transferAmount, setTransferAmount] = React.useState(10);
   const [transferTo, setTransferTo] = React.useState("DUMMY_ADDRESS");
   const [isDeleting, setIsDeleting] = React.useState(false);
@@ -104,13 +112,100 @@ export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId }
           <Arrow />
           <DropdownMenuLabel>Signer Actions</DropdownMenuLabel>
           <DropdownMenuGroup>
-            <DropdownMenuItem onClick={() => {
-              setOpen(false);
-              setShareDialogOpen(true);
-            }}>
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
-            </DropdownMenuItem>
+            <Dialog>
+              <DialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => {
+                  e.preventDefault();
+                  setOpen(false);
+                }}>
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share
+                </DropdownMenuItem>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Share Signer</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col items-center space-y-6">
+                  {/* QR Code */}
+                  <div className="bg-white p-4 rounded-lg shadow-sm border">
+                    {publicKey && (
+                      <QRCodeSVG
+                        value={publicKey}
+                        size={200}
+                        level="H"
+                        includeMargin={true}
+                        className="w-full h-full"
+                      />
+                    )}
+                  </div>
+
+                  {/* Public Key */}
+                  <div className="w-full space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Public Key</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={publicKey || ""}
+                        className="flex-1 px-3 py-2 text-sm border rounded-md bg-gray-50"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          if (publicKey) {
+                            copyToClipboard(publicKey);
+                            toast.success("Public key copied!");
+                          }
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Share Options */}
+                  <div className="w-full space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Share via</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          if (publicKey) {
+                            void navigator.share({
+                              title: "Share Signer",
+                              text: `Signer Public Key: ${publicKey}`,
+                            }).catch(() => {
+                              // Fallback if Web Share API is not supported
+                              copyToClipboard(publicKey);
+                              toast.success("Public key copied!");
+                            });
+                          }
+                        }}
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          if (publicKey) {
+                            copyToClipboard(publicKey);
+                            toast.success("Public key copied!");
+                          }
+                        }}
+                      >
+                        <Link className="h-4 w-4 mr-2" />
+                        Copy Link
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
             {handleSep10 && publicKey && <DropdownMenuItem onClick={() => handleSep10(publicKey)}>Sep10</DropdownMenuItem>}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => {
@@ -161,91 +256,6 @@ export function SignersActions({ handleTransfer, handleSep10, publicKey, keyId }
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {/* Share Dialog */}
-      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Share Signer</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center space-y-6 py-4">
-            {/* QR Code */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
-              <QRCodeSVG
-                value={publicKey || ""}
-                size={200}
-                level="H"
-                includeMargin={true}
-                className="w-full h-full"
-              />
-            </div>
-
-            {/* Public Key */}
-            <div className="w-full space-y-2">
-              <label className="text-sm font-medium text-gray-700">Public Key</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={publicKey}
-                  className="flex-1 px-3 py-2 text-sm border rounded-md bg-gray-50"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    if (publicKey) {
-                      copyToClipboard(publicKey);
-                      toast.success("Public key copied!");
-                    }
-                  }}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Share Options */}
-            <div className="w-full space-y-2">
-              <label className="text-sm font-medium text-gray-700">Share via</label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    if (publicKey) {
-                      void navigator.share({
-                        title: "Share Signer",
-                        text: `Signer Public Key: ${publicKey}`,
-                      }).catch(() => {
-                        // Fallback if Web Share API is not supported
-                        copyToClipboard(publicKey);
-                        toast.success("Public key copied!");
-                      });
-                    }
-                  }}
-                >
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    if (publicKey) {
-                      copyToClipboard(publicKey);
-                      toast.success("Public key copied!");
-                    }
-                  }}
-                >
-                  <Link className="h-4 w-4 mr-2" />
-                  Copy Link
-                </Button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
         <DialogContent>
