@@ -119,12 +119,6 @@ const popularContracts: PopularContract[] = [
         icon: <Combine className="h-3.5 w-3.5" />
     },
     {
-        name: "Zafegard",
-        description: "@kalepail's Zafegard Demo",
-        address: "CDI7YU6DMWJCGXXEPQGHBKDPBW3DEICDJ5MOTGNJAEEPWMHW4XXPU2PP",
-        icon: <Combine className="h-3.5 w-3.5" />
-    },
-    {
         name: "Do Math",
         description: "@kalepail's Do Math Demo",
         address: "CAXZG5WRNRY4ZDG6UPNFAQ2HY77HPETA7YIQDKFK4JENRVH43X2TREW6",
@@ -535,18 +529,18 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
     };
 
     return (
-        <Card className="mt-6">
-            <CardHeader>
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div className="border-b border-gray-100 bg-gray-50 p-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-base font-medium">Test Contract Call</CardTitle>
-                        <CardDescription className="text-sm text-muted-foreground">
+                        <h2 className="text-sm font-medium text-gray-700">Test Contract Call</h2>
+                        <p className="text-xs text-gray-500 mt-1">
                             Test smart contract functions with any signer
-                        </CardDescription>
+                        </p>
                     </div>
                 </div>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="p-4">
                 <div className="space-y-4">
                     <div>
                         <Label className="text-xs font-medium">Popular Contracts</Label>
@@ -556,16 +550,16 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                     key={contract.address}
                                     onClick={() => handleContractSelect(contract)}
                                     className={cn(
-                                        "flex items-center gap-2 rounded-md border p-2 text-left transition-colors hover:bg-muted",
-                                        contractAddress === contract.address && "border-primary bg-muted"
+                                        "flex items-center gap-2 rounded-md border p-2 text-left transition-colors hover:bg-gray-50",
+                                        contractAddress === contract.address && "border-indigo-300 bg-indigo-50"
                                     )}
                                 >
-                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-background">
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-white">
                                         {contract.icon}
                                     </div>
                                     <div className="flex-1 overflow-hidden">
                                         <div className="truncate text-sm font-medium">{contract.name}</div>
-                                        <div className="truncate text-xs text-muted-foreground">
+                                        <div className="truncate text-xs text-gray-500">
                                             {contract.description}
                                         </div>
                                     </div>
@@ -597,7 +591,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
 
                     {isLoadingMetadata && (
                         <div className="flex items-center justify-center py-4">
-                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
                         </div>
                     )}
 
@@ -627,8 +621,8 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                                                     }}
                                                                     onKeyDown={(e) => handleKeyDown(e, fn.name)}
                                                                     className={cn(
-                                                                        "w-full border-b p-3 text-left transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-                                                                        selectedFunction === fn.name && "bg-muted",
+                                                                        "w-full border-b p-3 text-left transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                                                                        selectedFunction === fn.name && "bg-gray-50",
                                                                         "last:border-b-0",
                                                                         isReadOnlyFunction(fn.name) ? "hover:bg-blue-50" : "hover:bg-orange-50"
                                                                     )}
@@ -668,7 +662,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                                                                     >
                                                                                         {param.type}
                                                                                     </Badge>
-                                                                                    <span className="font-mono text-muted-foreground">
+                                                                                    <span className="font-mono text-gray-500">
                                                                                         {param.name}
                                                                                     </span>
                                                                                 </div>
@@ -697,24 +691,35 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                                             setSelectedUnion(null);
                                                         }}
                                                         className={cn(
-                                                            "w-full border-b p-3 text-left transition-colors hover:bg-muted",
-                                                            selectedEnum === enum_.name && "bg-muted",
+                                                            "w-full border-b p-3 text-left transition-colors hover:bg-gray-50",
+                                                            selectedEnum === enum_.name && "bg-gray-50",
                                                             "last:border-b-0"
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-2">
                                                             <span className="font-mono text-sm">{enum_.name}</span>
                                                             {enum_.isErrorEnum && (
-                                                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                                                                    error
+                                                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[10px]">
+                                                                    errors
                                                                 </Badge>
                                                             )}
                                                         </div>
-                                                        {enum_.doc && (
-                                                            <p className="mt-1 text-xs text-muted-foreground truncate">{enum_.doc}</p>
-                                                        )}
+                                                        {enum_.doc && <p className="mt-1 text-xs text-gray-500">{enum_.doc}</p>}
+                                                        <div className="mt-2 space-y-1">
+                                                            {enum_.variants.map((variant: any) => (
+                                                                <div key={variant.name} className="flex items-center gap-2 text-xs">
+                                                                    <Badge variant="outline" className="font-mono text-[10px]">
+                                                                        {variant.value}
+                                                                    </Badge>
+                                                                    <span className="font-mono text-gray-500">{variant.name}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </button>
                                                 ))}
+                                                {!metadata.enums?.length && (
+                                                    <div className="p-3 text-center text-xs text-gray-500">No enums found</div>
+                                                )}
                                             </div>
                                         </TabsContent>
 
@@ -729,17 +734,39 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                                             setSelectedUnion(union.name);
                                                         }}
                                                         className={cn(
-                                                            "w-full border-b p-3 text-left transition-colors hover:bg-muted",
-                                                            selectedUnion === union.name && "bg-muted",
+                                                            "w-full border-b p-3 text-left transition-colors hover:bg-gray-50",
+                                                            selectedUnion === union.name && "bg-gray-50",
                                                             "last:border-b-0"
                                                         )}
                                                     >
-                                                        <span className="font-mono text-sm">{union.name}</span>
-                                                        {union.doc && (
-                                                            <p className="mt-1 text-xs text-muted-foreground truncate">{union.doc}</p>
-                                                        )}
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-mono text-sm">{union.name}</span>
+                                                            <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px]">
+                                                                union
+                                                            </Badge>
+                                                        </div>
+                                                        {union.doc && <p className="mt-1 text-xs text-gray-500">{union.doc}</p>}
+                                                        <div className="mt-2 space-y-1">
+                                                            {union.cases.map((case_: any) => (
+                                                                <div key={case_.name} className="flex items-center gap-2 text-xs">
+                                                                    {case_.type ? (
+                                                                        <Badge variant="outline" className="font-mono text-[10px]">
+                                                                            {case_.type}
+                                                                        </Badge>
+                                                                    ) : (
+                                                                        <Badge variant="outline" className="font-mono text-[10px] bg-gray-50">
+                                                                            void
+                                                                        </Badge>
+                                                                    )}
+                                                                    <span className="font-mono text-gray-500">{case_.name}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                     </button>
                                                 ))}
+                                                {!metadata.unions?.length && (
+                                                    <div className="p-3 text-center text-xs text-gray-500">No unions found</div>
+                                                )}
                                             </div>
                                         </TabsContent>
                                     </Tabs>
@@ -861,7 +888,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                                     </div>
                                                 </div>
                                                 <p className="text-xs text-muted-foreground -mt-1">
-                                                    The transaction will be signed by the selected signer, but source/from parameters will use the main wallet address.
+                                                    The transaction will be signed by the selected signer
                                                 </p>
 
                                                 <Button
@@ -1019,7 +1046,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                         </div>
                     )}
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 };

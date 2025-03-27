@@ -301,13 +301,7 @@ export default function PasskeyCreation() {
           {/* Main Content */}
           <div className="space-y-4">
             {contractId && (
-              <>
-                <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-4">
-                  <ContractCall
-                    mainWalletId={contractId}
-                  />
-                </div>
-              </>
+              <ContractCall mainWalletId={contractId} />
             )}
           </div>
         </div>
