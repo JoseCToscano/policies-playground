@@ -16,7 +16,9 @@ import {
     EuroIcon,
     StarIcon,
     Combine,
-    Terminal
+    Terminal,
+    KeyRound,
+    WalletIcon
 } from "lucide-react"
 
 import { Label } from "~/components/ui/label"
@@ -29,6 +31,7 @@ import {
     TooltipTrigger,
 } from "~/components/ui/tooltip"
 import { SAC_FUNCTION_DOCS } from "~/lib/constants/sac";
+import { Combobox, ComboboxItem } from "~/components/ui/combobox";
 
 interface PopularContract {
     name: string;
@@ -42,8 +45,6 @@ interface EnumVariant {
     value: number;
     doc?: string;
 }
-
-
 
 interface ContractEnum {
     name: string;
@@ -64,8 +65,6 @@ interface ContractUnion {
     cases: UnionCase[];
 }
 
-
-
 interface ContractMetadata {
     name?: string;
     symbol?: string;
@@ -83,6 +82,14 @@ interface ContractFunction {
         name: string;
         type: string;
     }>;
+}
+
+interface Signer {
+    id: string;
+    name: string;
+    key: string;
+    type: string;
+    icon: React.ReactNode;
 }
 
 const popularContracts: PopularContract[] = [
@@ -125,7 +132,7 @@ const popularContracts: PopularContract[] = [
 ];
 
 
-export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?: string }) => {
+export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }: { signer?: string; mainWalletId?: string; signers?: any[] }) => {
     const [contractAddress, setContractAddress] = useState("");
     const [loading, setLoading] = useState(false);
     const [metadata, setMetadata] = useState<ContractMetadata | null>(null);
@@ -137,7 +144,38 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
     const [callResult, setCallResult] = useState<string | null>(null);
     const [callError, setCallError] = useState<string | null>(null);
     const [isCalling, setIsCalling] = useState(false);
-    const { signXDR, signAndSend } = useSmartWallet();
+    const [selectedSigner, setSelectedSigner] = useState<string>(mainWalletId || "");
+    const { signXDR, signAndSend, signers: walletSigners } = useSmartWallet();
+
+    // Prepare signers for combobox
+    const getSignersForCombobox = useCallback((): ComboboxItem[] => {
+        const signersList: ComboboxItem[] = [];
+
+        // Add main wallet as first option
+        if (mainWalletId) {
+            signersList.push({
+                value: mainWalletId,
+                label: "Main Wallet",
+                description: shortAddress(mainWalletId),
+                icon: <WalletIcon className="h-3.5 w-3.5" />
+            });
+        }
+
+        // Add other signers from wallet or externally provided
+        const allSigners = externalSigners || walletSigners || [];
+        allSigners.forEach(signer => {
+            signersList.push({
+                value: signer.key || signer.publicKey,
+                label: signer.name || `Signer ${shortAddress(signer.key || signer.publicKey)}`,
+                description: shortAddress(signer.key || signer.publicKey),
+                icon: <KeyRound className="h-3.5 w-3.5" />
+            });
+        });
+
+        return signersList;
+    }, [mainWalletId, externalSigners, walletSigners]);
+
+    const signerOptions = getSignersForCombobox();
 
     const submitXDRMutation = api.stellar.submitXDR.useMutation({
         onSuccess: (data) => {
@@ -152,6 +190,13 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
         }
     });
 
+    // Set initial signer
+    useEffect(() => {
+        if (mainWalletId && !selectedSigner) {
+            setSelectedSigner(mainWalletId);
+        }
+    }, [mainWalletId, selectedSigner]);
+
     const handleContractSelect = (contract: PopularContract) => {
         if (contract.address) {
             setContractAddress(contract.address);
@@ -159,6 +204,12 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
             setCallResult(null);
             setCallError(null);
         }
+    };
+
+    // Extract short address for display
+    const shortAddress = (address: string): string => {
+        if (!address) return "";
+        return address.length > 10 ? `${address.slice(0, 5)}...${address.slice(-5)}` : address;
     };
 
     const { data: contractMetadata, isLoading: isLoadingMetadata } = api.stellar.getContractMetadata.useQuery(
@@ -215,12 +266,12 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
 
     // Set initial parameter value based on parameter type and name
     const getInitialParamValue = useCallback((param: any) => {
-        // For address parameters with specific names, use the wallet ID
-        if (shouldUseDefaultAddressValue(param.name, param.type) && mainWalletId) {
-            return mainWalletId;
+        // For address parameters with specific names, use the selected signer
+        if (shouldUseDefaultAddressValue(param.name, param.type) && selectedSigner) {
+            return selectedSigner;
         }
         return "";
-    }, [mainWalletId]);
+    }, [selectedSigner]);
 
     // When function selection changes, initialize params with default values
     useEffect(() => {
@@ -235,6 +286,24 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
             }
         }
     }, [selectedFunction, metadata, getInitialParamValue]);
+
+    // When selected signer changes, update function parameters that use the signer's address
+    useEffect(() => {
+        if (selectedFunction && metadata && selectedSigner) {
+            const fn = metadata.functions.find((f: any) => f.name === selectedFunction);
+            if (fn) {
+                setFunctionParams(prev => {
+                    const newParams = { ...prev };
+                    fn.parameters.forEach((param: any) => {
+                        if (shouldUseDefaultAddressValue(param.name, param.type)) {
+                            newParams[param.name] = selectedSigner;
+                        }
+                    });
+                    return newParams;
+                });
+            }
+        }
+    }, [selectedSigner, selectedFunction, metadata]);
 
     // Prepare parameters for contract call
     const prepareCallParameters = () => {
@@ -295,8 +364,6 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
         }
     };
 
-
-
     // Helper to determine if a function is read-only
     const isReadOnlyFunction = (name: string): boolean => {
         return ['balance', 'allowance', 'decimals', 'name', 'symbol'].includes(name);
@@ -337,7 +404,6 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
         return paramType === 'address' && ['from', 'source', 'user'].includes(paramName.toLowerCase());
     };
 
-
     // Create XDR for contract function call
     const createContractCallXdr = async (fn: string, params: Record<string, any>) => {
         if (!fn || !contractAddress) return null;
@@ -350,10 +416,16 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
                 const value = params[param.name];
                 return value //; paramToScVal(value, param.type);
             });
-            if (!mainWalletId) {
-                throw new Error("Main wallet ID is required");
+            if (!selectedSigner) {
+                throw new Error("No signer selected for the transaction");
             }
-            const response = await prepareContractCall({ contractAddress, method: fn, args: scValParams, isReadOnly, walletContractId: mainWalletId });
+            const response = await prepareContractCall({
+                contractAddress,
+                method: fn,
+                args: scValParams,
+                isReadOnly,
+                walletContractId: selectedSigner
+            });
             if (!response) {
                 throw new Error("Failed to prepare contract call");
             }
@@ -371,6 +443,11 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
             return;
         }
 
+        if (!selectedSigner) {
+            toast.error("Please select a signer for the transaction");
+            return;
+        }
+
         setIsCalling(true);
         setCallResult(null);
         setCallError(null);
@@ -380,6 +457,10 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
             if (params === null) {
                 throw new Error("Failed to prepare parameters");
             }
+
+            // Get the signer display name
+            const signerItem = signerOptions.find(s => s.value === selectedSigner);
+            const signerName = signerItem ? signerItem.label : shortAddress(selectedSigner);
 
             // Handle read-only functions differently from write functions
             if (isReadOnlyFunction(selectedFunction)) {
@@ -398,7 +479,7 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
                     }).then(res => res.json());
 
                     setCallResult(JSON.stringify(result, null, 2));
-                    toast.success(`${selectedFunction} called successfully`);
+                    toast.success(`${selectedFunction} called successfully using ${signerName}`);
                 } catch (error: any) {
                     throw new Error(`Contract query failed: ${error.message}`);
                 }
@@ -413,7 +494,7 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
 
                 const result = await signAndSend(xdr, "Secp256r1");
                 if (result) {
-                    toast.success("Function called successfully");
+                    toast.success(`Function called successfully using ${signerName}`);
                     setCallResult(JSON.stringify(result, bigIntReplacer, 2));
                 }
 
@@ -438,6 +519,17 @@ export const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWa
                         <CardDescription className="text-sm text-muted-foreground">
                             Test smart contract functions with any signer
                         </CardDescription>
+                    </div>
+                    <div className="w-[200px]">
+                        <Combobox
+                            items={signerOptions}
+                            value={selectedSigner}
+                            onChange={setSelectedSigner}
+                            placeholder="Select signer..."
+                            searchPlaceholder="Search signers..."
+                            emptyText="No signers available"
+                            className="w-full text-xs"
+                        />
                     </div>
                 </div>
             </CardHeader>
