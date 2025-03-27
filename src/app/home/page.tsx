@@ -257,6 +257,36 @@ export default function PasskeyCreation() {
               </div>
             </div>
 
+            {/* Signers Section - Added to sidebar */}
+            {contractId && (
+              <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-gray-700">Signers</h3>
+                    <Button
+                      onClick={handleAddSigner}
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-7 px-2 text-indigo-600 hover:text-indigo-700 hover:bg-gray-100"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <>
+                          <Plus className="mr-1 h-3 w-3" />
+                          Add
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <SignersList walletId={contractId} />
+                </div>
+              </div>
+            )}
+
             {/* Policies Section */}
             {contractId && (
               <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -272,9 +302,6 @@ export default function PasskeyCreation() {
           <div className="space-y-4">
             {contractId && (
               <>
-                <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-4">
-                  <SignersList walletId={contractId} />
-                </div>
                 <div className="rounded-lg border border-gray-200 bg-white shadow-sm p-4">
                   <ContractCall
                     mainWalletId={contractId}

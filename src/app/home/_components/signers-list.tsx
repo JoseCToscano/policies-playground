@@ -63,7 +63,11 @@ export function SignersList({ walletId }: { walletId: string }) {
 
     if (signers.length === 0) {
         console.log('No signers found for wallet:', walletId);
-        return null;
+        return (
+            <div className="rounded-md border border-dashed border-gray-200 p-3 text-center">
+                <p className="text-xs text-gray-500">No signers added</p>
+            </div>
+        );
     }
 
     return (
@@ -78,26 +82,26 @@ export function SignersList({ walletId }: { walletId: string }) {
                     }}>
                         <DialogTrigger asChild>
                             <div
-                                className="flex items-center justify-between border border-gray-100 rounded-lg bg-white p-3 cursor-pointer hover:border-gray-200 transition-colors"
+                                className="flex items-center justify-between border border-gray-200 rounded-md bg-white p-2 cursor-pointer hover:bg-gray-50 transition-colors"
                                 onClick={() => {
                                     setSelectedSigner(signer);
                                     setIsModalOpen(true);
                                 }}
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 border border-gray-100">
+                                <div className="flex items-center gap-2">
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-50 border border-gray-200">
                                         <span className="text-xs font-medium text-gray-600">
                                             {signer.name.charAt(0).toUpperCase()}
                                         </span>
                                     </div>
                                     <div className="flex flex-col">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-sm font-medium text-gray-900">{signer.name}</h3>
-                                            <Badge className="bg-gray-50 border border-gray-100 text-xs font-normal text-gray-600">
+                                        <div className="flex items-center gap-1.5">
+                                            <h3 className="text-xs font-medium text-gray-900">{signer.name}</h3>
+                                            <Badge className="bg-gray-50 border border-gray-200 text-xs px-1 py-0 h-4 font-normal text-gray-600">
                                                 {signer.purpose}
                                             </Badge>
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                        <div className="flex items-center gap-1 text-xs text-gray-500">
                                             <span className="font-mono">{shortAddress(signer.publicKey)}</span>
                                             <button
                                                 onClick={(e) => {
@@ -112,70 +116,43 @@ export function SignersList({ walletId }: { walletId: string }) {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xs text-gray-400">
-                                        {new Date(signer.addedAt).toLocaleDateString()}
-                                    </span>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            /* TODO: Implement share functionality */
-                                        }}
-                                        className="flex items-center gap-1.5 rounded-md border border-gray-100 px-2.5 py-1 text-xs text-gray-600 hover:border-gray-200 transition-colors"
-                                    >
-                                        <Share2 className="h-3.5 w-3.5" />
-                                        Share
-                                    </button>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <button
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="rounded-full p-1 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
-                                            >
-                                                <MoreVertical className="h-3.5 w-3.5" />
-                                            </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-44">
-                                            <DropdownMenuItem className="gap-2 text-xs">
-                                                <ArrowRightLeft className="h-3.5 w-3.5" />
-                                                <span>Transfer</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="gap-2 text-xs">
-                                                <Terminal className="h-3.5 w-3.5" />
-                                                <span>Call Contract</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="gap-2 text-xs">
-                                                <FileText className="h-3.5 w-3.5" />
-                                                <span>Attach Policy</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="gap-2 text-xs">
-                                                <Pencil className="h-3.5 w-3.5" />
-                                                <span>Edit</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="gap-2 text-xs" onClick={() => copyToClipboard(signer.publicKey)}>
-                                                <Copy className="h-3.5 w-3.5" />
-                                                <span>Copy Public Key</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="gap-2 text-xs">
-                                                <QrCode className="h-3.5 w-3.5" />
-                                                <span>Show QR Code</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="gap-2 text-xs">
-                                                <Download className="h-3.5 w-3.5" />
-                                                <span>Download</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="gap-2 text-xs">
-                                                <Share2 className="h-3.5 w-3.5" />
-                                                <span>Share</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem className="gap-2 text-xs text-red-600 focus:bg-red-50 focus:text-red-600">
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                                <span>Remove</span>
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                                        >
+                                            <MoreVertical className="h-3.5 w-3.5" />
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-44">
+                                        <DropdownMenuItem className="gap-2 text-xs">
+                                            <ArrowRightLeft className="h-3.5 w-3.5" />
+                                            <span>Transfer</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="gap-2 text-xs">
+                                            <Terminal className="h-3.5 w-3.5" />
+                                            <span>Call Contract</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="gap-2 text-xs">
+                                            <FileText className="h-3.5 w-3.5" />
+                                            <span>Attach Policy</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="gap-2 text-xs">
+                                            <Share2 className="h-3.5 w-3.5" />
+                                            <span>Share</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => copyToClipboard(signer.publicKey)}>
+                                            <Copy className="h-3.5 w-3.5" />
+                                            <span>Copy Key</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem className="gap-2 text-xs text-red-600 focus:bg-red-50 focus:text-red-600">
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                            <span>Remove</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </DialogTrigger>
                         {selectedSigner && (
