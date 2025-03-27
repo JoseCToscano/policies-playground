@@ -260,7 +260,9 @@ export default function PasskeyCreation() {
             {contractId && (
               <>
                 <SignersList walletId={contractId} />
-                <ContractCall mainWalletId={contractId} />
+                <ContractCall
+                  mainWalletId={contractId}
+                />
               </>
             )}
           </div>

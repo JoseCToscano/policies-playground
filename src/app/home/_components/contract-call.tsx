@@ -23,7 +23,7 @@ import {
 
 import { Label } from "~/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { bigIntReplacer, cn, copyToClipboard } from '~/lib/utils'
+import { bigIntReplacer, cn, copyToClipboard, shortAddress } from '~/lib/utils'
 import {
     Tooltip,
     TooltipContent,
@@ -32,6 +32,7 @@ import {
 } from "~/components/ui/tooltip"
 import { SAC_FUNCTION_DOCS } from "~/lib/constants/sac";
 import { Combobox, ComboboxItem } from "~/components/ui/combobox";
+import { SignerInfo, StoredSigners } from '~/app/home/_components/signers-list';
 
 interface PopularContract {
     name: string;
@@ -145,7 +146,37 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
     const [callError, setCallError] = useState<string | null>(null);
     const [isCalling, setIsCalling] = useState(false);
     const [selectedSigner, setSelectedSigner] = useState<string>(mainWalletId || "");
+    const [localSigners, setLocalSigners] = useState<SignerInfo[]>([]);
     const { signXDR, signAndSend, signers: walletSigners } = useSmartWallet();
+
+    // Load signers from localStorage
+    useEffect(() => {
+        if (!mainWalletId) return;
+
+        const loadSigners = () => {
+            const storedSigners: StoredSigners = JSON.parse(localStorage.getItem("zg:wallet_signers") || "{}");
+            setLocalSigners(storedSigners[mainWalletId] || []);
+        };
+
+        loadSigners();
+
+        // Set up listener for storage events to catch updates to signers
+        const handleStorageChange = (event: StorageEvent) => {
+            if (event.key === "zg:wallet_signers") {
+                loadSigners();
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+
+        // Also poll for changes (for when signers are added in the same window)
+        const interval = setInterval(loadSigners, 2000);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            clearInterval(interval);
+        };
+    }, [mainWalletId]);
 
     // Prepare signers for combobox
     const getSignersForCombobox = useCallback((): ComboboxItem[] => {
@@ -161,19 +192,33 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
             });
         }
 
-        // Add other signers from wallet or externally provided
-        const allSigners = externalSigners || walletSigners || [];
-        allSigners.forEach(signer => {
+        // Add signers from localStorage
+        localSigners.forEach(signer => {
             signersList.push({
-                value: signer.key || signer.publicKey,
-                label: signer.name || `Signer ${shortAddress(signer.key || signer.publicKey)}`,
-                description: shortAddress(signer.key || signer.publicKey),
+                value: signer.publicKey,
+                label: signer.name,
+                description: `${signer.purpose} • ${shortAddress(signer.publicKey)}`,
                 icon: <KeyRound className="h-3.5 w-3.5" />
             });
         });
 
+        // Add other signers from wallet or externally provided
+        const allSigners = externalSigners || walletSigners || [];
+        allSigners.forEach(signer => {
+            // Only add if not already added (by localStorage)
+            const key = signer.key || signer.publicKey;
+            if (!signersList.some(s => s.value === key)) {
+                signersList.push({
+                    value: key,
+                    label: signer.name || `Signer ${shortAddress(key)}`,
+                    description: shortAddress(key),
+                    icon: <KeyRound className="h-3.5 w-3.5" />
+                });
+            }
+        });
+
         return signersList;
-    }, [mainWalletId, externalSigners, walletSigners]);
+    }, [mainWalletId, externalSigners, walletSigners, localSigners]);
 
     const signerOptions = getSignersForCombobox();
 
@@ -204,12 +249,6 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
             setCallResult(null);
             setCallError(null);
         }
-    };
-
-    // Extract short address for display
-    const shortAddress = (address: string): string => {
-        if (!address) return "";
-        return address.length > 10 ? `${address.slice(0, 5)}...${address.slice(-5)}` : address;
     };
 
     const { data: contractMetadata, isLoading: isLoadingMetadata } = api.stellar.getContractMetadata.useQuery(
