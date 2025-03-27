@@ -58,7 +58,6 @@ const policyFormSchema = z.object({
     description: z.string().min(1, "Description is required"),
     contractAddress: z.string().min(1, "Contract address is required"),
     policyId: z.string().min(1, "Policy ID is required"),
-    contractIdToLimit: z.string().min(1, "Contract ID to limit is required"),
 });
 
 // Popular contracts for the combobox
@@ -115,7 +114,6 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
             description: "",
             contractAddress: "",
             policyId: "",
-            contractIdToLimit: "",
         },
     });
 
@@ -140,7 +138,7 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
                 type: 'contract',
                 content: values.contractAddress,
                 policyId: values.policyId,
-                contractIdToLimit: values.contractIdToLimit,
+                contractIdToLimit: values.contractAddress,
                 createdAt: new Date().toISOString(),
                 description: values.description
             };
@@ -358,6 +356,9 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
                                             </div>
                                         </FormControl>
                                         <FormMessage />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            This contract will also be the one limited by the policy.
+                                        </p>
                                     </FormItem>
                                 )}
                             />
@@ -369,19 +370,6 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
                                         <FormLabel>Policy ID</FormLabel>
                                         <FormControl>
                                             <Input placeholder="Enter policy ID" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="contractIdToLimit"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Contract ID to Limit</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Enter contract ID to limit" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
