@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Copy, Pencil, Share2, Trash2, FileText, Loader2, Plus, MoreVertical, CircleDollarSign, EuroIcon, StarIcon, Combine } from "lucide-react";
+import { Copy, Share2, Trash2, FileText, Loader2, Plus, MoreVertical, CircleDollarSign, EuroIcon, StarIcon, Combine } from "lucide-react";
 import { copyToClipboard, shortAddress } from "~/lib/utils";
 import {
     DropdownMenu,
@@ -30,11 +30,11 @@ import {
     FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import { Textarea } from "../_components/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Combobox, ComboboxItem } from "~/components/ui/combobox";
+import { Textarea } from "~/components/ui/textarea";
 
 type PolicyType = 'contract';
 
@@ -100,7 +100,7 @@ const popularContracts: ComboboxItem[] = [
     }
 ];
 
-export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, onPolicyAttach?: (policy: Policy) => Promise<void> }) {
+export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, onPolicyAttach?: (policy: Policy, signerKey: string) => Promise<void> }) {
     const [policies, setPolicies] = useState<Policy[]>([]);
     const [isAdding, setIsAdding] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
@@ -183,7 +183,7 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
         }
     };
 
-    const handleAttachPolicy = async (policy: Policy) => {
+    const handleAttachPolicy = async (policy: Policy, signerKey: string) => {
         if (!onPolicyAttach) {
             toast.error('Policy attachment not available');
             return;
@@ -191,7 +191,7 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
 
         setIsAttaching(true);
         try {
-            await onPolicyAttach(policy);
+            await onPolicyAttach(policy, signerKey);
             toast.success('Policy attached successfully');
         } catch (error) {
             console.error('Error attaching policy:', error);
@@ -263,16 +263,6 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-44">
-                                    {onPolicyAttach && (
-                                        <DropdownMenuItem
-                                            className="text-xs"
-                                            onClick={() => handleAttachPolicy(policy)}
-                                            disabled={isAttaching}
-                                        >
-                                            <Share2 className="mr-2 h-3.5 w-3.5" />
-                                            <span>{isAttaching ? 'Attaching...' : 'Attach Policy'}</span>
-                                        </DropdownMenuItem>
-                                    )}
                                     <DropdownMenuItem className="text-xs" onClick={() => copyToClipboard(policy.content)}>
                                         <Copy className="mr-2 h-3.5 w-3.5" />
                                         <span>Copy Address</span>

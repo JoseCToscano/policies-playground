@@ -511,22 +511,17 @@ export const useSmartWallet = () => {
         return secret ? Keypair.fromSecret(secret) : null;
     }
 
-    const signXDR = async (xdrString: string, signerType: 'subwallet:Ed25519' | 'Ed25519' | 'Secp256r1', publicKey?: string) => {
+    const signXDR = async (xdrString: string, signerType: 'Ed25519' | 'Secp256r1', publicKey?: string) => {
         if (signerType.includes('Ed25519')) {
             if (!publicKey) throw new Error('No public key found');
             const secret = signerType.includes('subwallet') ? getSubWalletSecret(publicKey) : getSignerSecret(publicKey);
             if (!secret) throw new Error('No secret found');
-            console.log('signXDR:', xdrString, signerType, publicKey, secret);
+            console.log('Signing from signXDR:', xdrString, signerType, publicKey, secret);
             const keypair = Keypair.fromSecret(secret);
-
+            console.log('keypair', keypair);
             try {
-                // TODO Use Transaction.fromXDR for SEP-10 challenge transactions
-                const transaction = new Transaction(
-                    xdrString,
-                    env.NEXT_PUBLIC_NETWORK_PASSPHRASE
-                );
-                transaction.sign(keypair);
-                return transaction.toXDR();
+                const transaction = TransactionBuilder.fromXDR(xdrString, env.NEXT_PUBLIC_NETWORK_PASSPHRASE);
+                return account.sign(transaction, { keypair });
             } catch (error) {
                 console.error('XDR parsing error:', {
                     xdrString,
@@ -573,35 +568,8 @@ export const useSmartWallet = () => {
         getSubWallets();
     }
 
-    // async function attach_Policy(signerPublicKey: string, policyId) {
-    //     try {
-    //         const ed25519_limits = new Map();
-
-    //         // ed25519 key can call do_math contract but only if it also calls the do_math policy
-    //         ed25519_limits.set(import.meta.env.PUBLIC_DO_MATH, [SignerKey.Policy(import.meta.env.PUBLIC_DO_MATH_POLICY)])
-
-    //         const at = await account.addEd25519(signerPublicKey, new Map(), SignerStore.Temporary);
-
-
-
-    //         const at = await pk_wallet.addEd25519(
-    //             keypair.publicKey(),
-    //             ed25519_limits,
-    //             SignerStore.Temporary
-    //         );
-
-    //         await pk_wallet.sign(at, { keyId: keyId_ });
-    //         const res = await pk_server.send(at.built!);
-
-    //         console.log(res);
-    //     } finally {
-    //         loading.set("attach_Policy", false);
-    //         loading = loading
-    //     }
-    // }
-
-    async function signAndSend(unsignedXDR: string, signerType: 'subwallet:Ed25519' | 'Ed25519' | 'Secp256r1', publicKey?: string) {
-        const signedXDR = await signXDR(unsignedXDR, signerType, publicKey);
+    async function signAndSend(unsignedXDR: string, signerType: 'Ed25519' | 'Secp256r1', signerPublicKey?: string) {
+        const signedXDR = await signXDR(unsignedXDR, signerType, signerPublicKey);
         const res = await server.send(signedXDR);
 
         try {
@@ -658,6 +626,6 @@ export const useSmartWallet = () => {
         signXDR,
         getKeypair,
         isConnecting,
-        removeSubWallet
+        removeSubWallet,
     }
 }

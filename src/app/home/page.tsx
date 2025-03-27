@@ -22,14 +22,10 @@ const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
 export default function PasskeyCreation() {
-  const [status, setStatus] = useState<'idle' | 'creating' | 'success' | 'error'>('idle')
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const { create, connect, getWalletSigners, signXDR, addSubWallet, transfer, subWallets, removeSubWallet, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, signers, isFunding, getWalletBalance, attachPolicy } = useSmartWallet();
+  const { create, connect, getWalletSigners, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, isFunding, getWalletBalance, attachPolicy } = useSmartWallet();
 
-  const [isTransfering, setIsTransfering] = useState(false);
   const [isAttachingPolicy, setIsAttachingPolicy] = useState(false);
 
-  const { getAuthChallenge, submitAuthChallenge } = useSep10();
 
   const { data: contractBalance } = api.stellar.getContractBalance.useQuery({ contractAddress: contractId! }, {
     enabled: !!contractId
@@ -43,11 +39,6 @@ export default function PasskeyCreation() {
     console.log('contractBalance changed, Page', contractBalance);
   }, [contractBalance]);
 
-  const handleTransfer = async ({ keypair, to, amount }: { keyId?: string, keypair?: Keypair, to: string, amount: number }) => {
-    setIsTransfering(true);
-    await transfer({ keypair, to, amount, keyId });
-    setIsTransfering(false);
-  }
 
   const handleAddSigner = async () => {
     console.log("Adding signer ...");
@@ -109,31 +100,9 @@ export default function PasskeyCreation() {
     }
   }
 
-  const handleAddSubWallet = async () => {
-    console.log("Adding subwallet ...");
-    await addSubWallet();
-    await getWalletSigners();
-  }
-
-  const handleRemoveSigner = async (key: string) => {
-    // TODO: Implement remove signer functionality
-    console.log("Removing signer:", key)
-  }
-
-  const handleAttachPolicy = async (policy: Policy) => {
+  const handleAttachPolicy = async (policy: Policy, signerKey: string) => {
     try {
       setIsAttachingPolicy(true);
-
-      // Get the first signer's public key (we'll assume we have at least one signer)
-      // In a real app, you might want to select which signer to attach the policy to
-      const signerKey = signers && signers.length > 0
-        ? signers[0].key
-        : null;
-
-      if (!signerKey) {
-        toast.error("No signer available to attach policy");
-        return;
-      }
 
       const result = await attachPolicy(
         signerKey,

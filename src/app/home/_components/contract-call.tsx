@@ -181,6 +181,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
             signersList.push({
                 value: mainWalletId,
                 label: "Main Wallet",
+                signerType: 'Secp256r1',
                 description: shortAddress(mainWalletId),
                 icon: <WalletIcon className="h-3.5 w-3.5" />
             });
@@ -190,6 +191,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
         localSigners.forEach(signer => {
             signersList.push({
                 value: signer.publicKey,
+                signerType: 'Ed25519',
                 label: signer.name,
                 description: `${signer.purpose} • ${shortAddress(signer.publicKey)}`,
                 icon: <KeyRound className="h-3.5 w-3.5" />
@@ -214,7 +216,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
         return signersList;
     }, [mainWalletId, externalSigners, walletSigners, localSigners]);
 
-    const signerOptions = getSignersForCombobox();
+    const signerOptions: ComboboxItem[] = getSignersForCombobox();
 
     const submitXDRMutation = api.stellar.submitXDR.useMutation({
         onSuccess: (data) => {
@@ -478,47 +480,25 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
 
             // Get the signer display name
             const signerItem = signerOptions.find(s => s.value === selectedSigner);
-            const signerName = signerItem ? signerItem.label : shortAddress(selectedSigner);
-
-            // Handle read-only functions differently from write functions
-            if (isReadOnlyFunction(selectedFunction)) {
-                try {
-                    // For read-only functions, we can directly query the result
-                    const result = await fetch('/api/query-contract', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            contractAddress,
-                            method: selectedFunction,
-                            args: params
-                        }),
-                    }).then(res => res.json());
-
-                    setCallResult(JSON.stringify(result, null, 2));
-                    toast.success(`${selectedFunction} called successfully using ${signerName}`);
-                } catch (error: any) {
-                    throw new Error(`Contract query failed: ${error.message}`);
-                }
-            } else {
-                // For write functions, we need to generate and submit XDR
-                console.log('params:', params);
-                const xdr = await createContractCallXdr(selectedFunction, params);
-                console.log('xdr:', xdr);
-                if (!xdr) {
-                    throw new Error("Failed to create transaction XDR");
-                }
-
-                const result = await signAndSend(xdr, "Secp256r1");
-                if (result) {
-                    toast.success(`Function called successfully using ${signerName}`);
-                    setCallResult(JSON.stringify(result, bigIntReplacer, 2));
-                }
-
-                // Submit the XDR
-                // await submitXDRMutation.mutateAsync({ xdr: signedXdr });
+            if (!signerItem || !signerItem.signerType) {
+                throw new Error("Signer not found");
             }
+
+            console.log('params:', params);
+            const xdr = await createContractCallXdr(selectedFunction, params);
+            console.log('xdr:', xdr);
+            if (!xdr) {
+                throw new Error("Failed to create transaction XDR");
+            }
+
+            const result = await signAndSend(xdr, signerItem.signerType, signerItem.value);
+            if (result) {
+                toast.success(`Function called successfully using ${signerItem.label}`);
+                setCallResult(JSON.stringify(result, bigIntReplacer, 2));
+            }
+
+            // Submit the XDR
+            // await submitXDRMutation.mutateAsync({ xdr: signedXdr });
         } catch (error: any) {
             console.error("Error calling contract function:", error);
             setCallError(error.message || "Unknown error occurred");

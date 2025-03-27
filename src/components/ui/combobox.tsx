@@ -24,6 +24,7 @@ export interface ComboboxItem {
     label: string
     icon?: React.ReactNode
     description?: string
+    signerType?: 'Ed25519' | 'Secp256r1'
 }
 
 interface ComboboxProps {
