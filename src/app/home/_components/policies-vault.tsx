@@ -100,11 +100,10 @@ const popularContracts: ComboboxItem[] = [
     }
 ];
 
-export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, onPolicyAttach?: (policy: Policy, signerKey: string) => Promise<void> }) {
+export function PoliciesVault({ walletId }: { walletId: string }) {
     const [policies, setPolicies] = useState<Policy[]>([]);
     const [isAdding, setIsAdding] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
-    const [isAttaching, setIsAttaching] = useState(false);
     const [selectedContract, setSelectedContract] = useState("");
 
     const form = useForm<z.infer<typeof policyFormSchema>>({
@@ -180,24 +179,6 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
         } catch (error) {
             console.error('Error deleting policy:', error);
             toast.error('Failed to delete policy');
-        }
-    };
-
-    const handleAttachPolicy = async (policy: Policy, signerKey: string) => {
-        if (!onPolicyAttach) {
-            toast.error('Policy attachment not available');
-            return;
-        }
-
-        setIsAttaching(true);
-        try {
-            await onPolicyAttach(policy, signerKey);
-            toast.success('Policy attached successfully');
-        } catch (error) {
-            console.error('Error attaching policy:', error);
-            toast.error('Failed to attach policy');
-        } finally {
-            setIsAttaching(false);
         }
     };
 

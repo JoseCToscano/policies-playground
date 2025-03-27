@@ -24,6 +24,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
+import { Policy } from "./policies-vault";
+import { toast } from "react-hot-toast";
 
 export type SignerInfo = {
     publicKey: string;
@@ -37,12 +39,19 @@ export type StoredSigners = {
     [walletId: string]: SignerInfo[];
 }
 
+type StoredPolicies = {
+    [walletId: string]: Policy[];
+}
 
-
-export function SignersList({ walletId }: { walletId: string }) {
+export function SignersList({ walletId, onAttachPolicy }: {
+    walletId: string;
+    onAttachPolicy?: (policy: Policy, signerKey: string) => Promise<void>;
+}) {
     const [signers, setSigners] = useState<SignerInfo[]>([]);
+    const [policies, setPolicies] = useState<Policy[]>([]);
     const [selectedSigner, setSelectedSigner] = useState<SignerInfo | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
 
     useEffect(() => {
         console.log('Loading signers for wallet:', walletId);
@@ -50,16 +59,43 @@ export function SignersList({ walletId }: { walletId: string }) {
         console.log('All stored signers:', storedSigners);
         console.log('Signers for this wallet:', storedSigners[walletId] || []);
         setSigners(storedSigners[walletId] || []);
+
+        // Also load policies
+        const storedPolicies: StoredPolicies = JSON.parse(localStorage.getItem("zg:wallet_policies") || "{}");
+        setPolicies(storedPolicies[walletId] || []);
     }, [walletId]);
 
     useEffect(() => {
         const interval = setInterval(() => {
             const storedSigners: StoredSigners = JSON.parse(localStorage.getItem("zg:wallet_signers") || "{}");
             setSigners(storedSigners[walletId] || []);
+
+            // Also refresh policies
+            const storedPolicies: StoredPolicies = JSON.parse(localStorage.getItem("zg:wallet_policies") || "{}");
+            setPolicies(storedPolicies[walletId] || []);
         }, 1000);
 
         return () => clearInterval(interval);
     }, [walletId]);
+
+    const handleAttachPolicy = (signer: SignerInfo) => {
+        setSelectedSigner(signer);
+        setIsPolicyModalOpen(true);
+    };
+
+    const handlePolicySelected = async (policy: Policy) => {
+        if (!selectedSigner || !onAttachPolicy) {
+            toast.error("Unable to attach policy");
+            return;
+        }
+
+        try {
+            await onAttachPolicy(policy, selectedSigner.publicKey);
+            setIsPolicyModalOpen(false);
+        } catch (error) {
+            console.error("Error attaching policy:", error);
+        }
+    };
 
     if (signers.length === 0) {
         console.log('No signers found for wallet:', walletId);
@@ -134,7 +170,13 @@ export function SignersList({ walletId }: { walletId: string }) {
                                             <Terminal className="h-3.5 w-3.5" />
                                             <span>Call Contract</span>
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem className="gap-2 text-xs">
+                                        <DropdownMenuItem
+                                            className="gap-2 text-xs"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleAttachPolicy(signer);
+                                            }}
+                                        >
                                             <FileText className="h-3.5 w-3.5" />
                                             <span>Attach Policy</span>
                                         </DropdownMenuItem>
@@ -158,7 +200,8 @@ export function SignersList({ walletId }: { walletId: string }) {
                         {selectedSigner && (
                             <SignerModal
                                 signer={selectedSigner}
-                                policies={[]}
+                                policies={policies}
+                                onAttachPolicy={handlePolicySelected}
                                 onClose={() => {
                                     setSelectedSigner(null);
                                     setIsModalOpen(false);
@@ -168,6 +211,65 @@ export function SignersList({ walletId }: { walletId: string }) {
                     </Dialog>
                 </div>
             ))}
+
+            {/* Policy Selection Modal */}
+            {isPolicyModalOpen && selectedSigner && (
+                <Dialog open={isPolicyModalOpen} onOpenChange={setIsPolicyModalOpen}>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-medium text-gray-900">
+                                    Attach Policy to {selectedSigner.name}
+                                </h3>
+                                <button
+                                    onClick={() => setIsPolicyModalOpen(false)}
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div className="space-y-3 mb-4 max-h-80 overflow-y-auto">
+                                {policies.length === 0 ? (
+                                    <div className="text-center p-4 border border-dashed border-gray-200 rounded-md">
+                                        <p className="text-sm text-gray-500">No policies available</p>
+                                        <p className="text-xs text-gray-400 mt-1">Create a policy first in the Policies section</p>
+                                    </div>
+                                ) : (
+                                    policies.map((policy) => (
+                                        <div
+                                            key={policy.id}
+                                            className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3 hover:bg-gray-50 cursor-pointer"
+                                            onClick={() => handlePolicySelected(policy)}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-50 border border-gray-200">
+                                                    <FileText className="h-4 w-4 text-gray-500" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-gray-900">{policy.name}</h4>
+                                                    <div className="text-xs text-gray-500">{shortAddress(policy.contractIdToLimit)}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button
+                                    onClick={() => setIsPolicyModalOpen(false)}
+                                    className="px-3 py-1.5 border border-gray-200 rounded-md text-sm text-gray-600 hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </Dialog>
+            )}
         </div>
     );
 }

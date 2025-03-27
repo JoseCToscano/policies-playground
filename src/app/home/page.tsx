@@ -251,7 +251,7 @@ export default function PasskeyCreation() {
                   </div>
                 </div>
                 <div className="p-4">
-                  <SignersList walletId={contractId} />
+                  <SignersList walletId={contractId} onAttachPolicy={handleAttachPolicy} />
                 </div>
               </div>
             )}
@@ -261,7 +261,6 @@ export default function PasskeyCreation() {
               <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
                 <PoliciesVault
                   walletId={contractId}
-                  onPolicyAttach={handleAttachPolicy}
                 />
               </div>
             )}
