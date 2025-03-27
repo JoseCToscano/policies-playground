@@ -600,7 +600,25 @@ export const useSmartWallet = () => {
     //     }
     // }
 
+    async function signAndSend(unsignedXDR: string, signerType: 'subwallet:Ed25519' | 'Ed25519' | 'Secp256r1', publicKey?: string) {
+        const signedXDR = await signXDR(unsignedXDR, signerType, publicKey);
+        const res = await server.send(signedXDR);
+
+        try {
+            console.log('res:', res);
+            const meta = xdr.TransactionMeta.fromXDR(res.resultMetaXdr, "base64");
+            console.log('meta:', meta);
+            const result = scValToNative(meta.v3().sorobanMeta()!.returnValue());
+            console.log('result:', result);
+            return result;
+        } catch (error) {
+            console.error('Error parsing result:', error);
+            return res;
+        }
+    }
+
     return {
+        signAndSend,
         create,
         adminSigner,
         getWalletSigners,

@@ -341,7 +341,7 @@ const popularContracts: PopularContract[] = [
   {
     name: "Zafegard",
     description: "@kalepail's Zafegard Demo",
-    address: "CCHZKMVGSP3N4YEHD4EFHA6UKND5NDVP4COTAFENAFMPRNTEC2U2ST5F",
+    address: "CDI7YU6DMWJCGXXEPQGHBKDPBW3DEICDJ5MOTGNJAEEPWMHW4XXPU2PP",
     icon: <Combine className="h-3.5 w-3.5" />
   },
   {

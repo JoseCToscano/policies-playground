@@ -3,12 +3,12 @@ import { twMerge } from "tailwind-merge"
 import { PasskeyKit, SACClient, PasskeyServer } from "passkey-kit";
 import { Server } from "@stellar/stellar-sdk/minimal/rpc";
 import { env } from "~/env";
-import { StrKey, Keypair, Account } from "@stellar/stellar-sdk/minimal";
-import { basicNodeSigner } from "@stellar/stellar-sdk/minimal/contract";
+import { StrKey, Keypair, Account, contract } from "@stellar/stellar-sdk/minimal";
+import { basicNodeSigner, Client } from "@stellar/stellar-sdk/minimal/contract";
 import toast from "react-hot-toast";
 import { TRPCClientErrorLike } from "@trpc/client";
 import { AnyClientTypes, TRPCError } from "@trpc/server/unstable-core-do-not-import";
-import { Horizon } from "@stellar/stellar-sdk";
+import { Address, Asset, Horizon, Networks } from "@stellar/stellar-sdk";
 import { type AxiosError } from "axios";
 
 export function cn(...inputs: ClassValue[]) {
@@ -103,7 +103,7 @@ export function ClientTRPCErrorHandler<T extends AnyClientTypes>(
 }
 
 export function handleHorizonServerError(error: unknown) {
-  console.log("hi:)");
+  console.log("hi:)", error);
   let message = "Failed to send transaction to blockchain";
   const axiosError = error as AxiosError<Horizon.HorizonApi.ErrorResponseData>;
   if (
@@ -258,4 +258,40 @@ function parsedTransactionFailedError(
     message = "Max number of subentries (1000) already reached";
   }
   return message;
+}
+
+export const createSmartContractClient = async (contractAddress: string): Promise<Client> => {
+  if (contractAddress === 'native' || contractAddress === env.NEXT_PUBLIC_NATIVE_CONTRACT_ID) {
+    return new SACClient({
+      rpcUrl: env.NEXT_PUBLIC_RPC_URL,
+      networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
+    }).getSACClient(env.NEXT_PUBLIC_NATIVE_CONTRACT_ID);
+  } else if (contractAddress.includes('-')) {
+    const [code, issuer] = contractAddress.split('-');
+    if (!code || !issuer) {
+      throw new Error("Invalid Asset Contract address format");
+    }
+    const asset = new Asset(code, issuer);
+    const contractId = await asset.contractId(Networks.TESTNET);
+    return new SACClient({
+      rpcUrl: env.NEXT_PUBLIC_RPC_URL,
+      networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
+    }).getSACClient(contractId);
+  }
+
+  const contractClient = await contract.Client.from({
+    contractId: contractAddress,
+    networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
+    rpcUrl: env.NEXT_PUBLIC_RPC_URL,
+  })
+
+  return new Client(contractClient.spec, {
+    contractId: contractAddress,
+    networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
+    rpcUrl: env.NEXT_PUBLIC_RPC_URL,
+  });
+}
+
+export function bigIntReplacer(_key: string, value: any): any {
+  return typeof value === 'bigint' ? value.toString() : value;
 }
