@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Copy, Pencil, Share2, Trash2, FileText, Loader2, Plus, MoreVertical } from "lucide-react";
+import { Copy, Pencil, Share2, Trash2, FileText, Loader2, Plus, MoreVertical, CircleDollarSign, EuroIcon, StarIcon, Combine } from "lucide-react";
 import { copyToClipboard, shortAddress } from "~/lib/utils";
 import {
     DropdownMenu,
@@ -34,6 +34,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { Combobox, ComboboxItem } from "~/components/ui/combobox";
 
 type PolicyType = 'contract';
 
@@ -60,11 +61,52 @@ const policyFormSchema = z.object({
     contractIdToLimit: z.string().min(1, "Contract ID to limit is required"),
 });
 
+// Popular contracts for the combobox
+const popularContracts: ComboboxItem[] = [
+    {
+        value: "native",
+        label: "Native XLM",
+        description: "Stellar's native token",
+        icon: <StarIcon className="h-3.5 w-3.5" />
+    },
+    {
+        value: "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
+        label: "USDC Token",
+        description: "Circle's USD Coin on Stellar",
+        icon: <CircleDollarSign className="h-3.5 w-3.5" />
+    },
+    {
+        value: "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO",
+        label: "EURC Token",
+        description: "Circle's Euro Coin on Stellar",
+        icon: <EuroIcon className="h-3.5 w-3.5" />
+    },
+    {
+        value: "CCHZKMVGSP3N4YEHD4EFHA6UKND5NDVP4COTAFENAFMPRNTEC2U2ST5F",
+        label: "Blend",
+        description: "Blend Protocol",
+        icon: <Combine className="h-3.5 w-3.5" />
+    },
+    {
+        value: "CDI7YU6DMWJCGXXEPQGHBKDPBW3DEICDJ5MOTGNJAEEPWMHW4XXPU2PP",
+        label: "Zafegard",
+        description: "@kalepail's Zafegard Demo",
+        icon: <Combine className="h-3.5 w-3.5" />
+    },
+    {
+        value: "CAXZG5WRNRY4ZDG6UPNFAQ2HY77HPETA7YIQDKFK4JENRVH43X2TREW6",
+        label: "Do Math",
+        description: "@kalepail's Do Math Demo",
+        icon: <Combine className="h-3.5 w-3.5" />
+    }
+];
+
 export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, onPolicyAttach?: (policy: Policy) => Promise<void> }) {
     const [policies, setPolicies] = useState<Policy[]>([]);
     const [isAdding, setIsAdding] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [isAttaching, setIsAttaching] = useState(false);
+    const [selectedContract, setSelectedContract] = useState("");
 
     const form = useForm<z.infer<typeof policyFormSchema>>({
         resolver: zodResolver(policyFormSchema),
@@ -76,6 +118,13 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
             contractIdToLimit: "",
         },
     });
+
+    // Update form value when contract is selected from combobox
+    useEffect(() => {
+        if (selectedContract) {
+            form.setValue("contractAddress", selectedContract);
+        }
+    }, [selectedContract, form]);
 
     useEffect(() => {
         const storedPolicies: StoredPolicies = JSON.parse(localStorage.getItem("zg:wallet_policies") || "{}");
@@ -109,6 +158,7 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
             toast.success('Policy added successfully');
             setIsOpen(false);
             form.reset();
+            setSelectedContract("");
         } catch (error) {
             console.error('Error adding policy:', error);
             toast.error('Failed to add policy');
@@ -287,7 +337,25 @@ export function PoliciesVault({ walletId, onPolicyAttach }: { walletId: string, 
                                     <FormItem>
                                         <FormLabel>Contract Address</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Enter contract address" {...field} />
+                                            <div className="space-y-2">
+                                                <Combobox
+                                                    items={popularContracts}
+                                                    value={selectedContract}
+                                                    onChange={setSelectedContract}
+                                                    placeholder="Select a contract or enter address"
+                                                    searchPlaceholder="Search contracts..."
+                                                    emptyText="No contracts found"
+                                                />
+                                                <Input
+                                                    placeholder="Or enter contract address manually"
+                                                    {...field}
+                                                    value={selectedContract || field.value}
+                                                    onChange={(e) => {
+                                                        field.onChange(e);
+                                                        setSelectedContract(e.target.value);
+                                                    }}
+                                                />
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
