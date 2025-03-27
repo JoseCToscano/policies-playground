@@ -8,18 +8,22 @@ export const stringToSymbol = (val: string) => {
 };
 
 /**
- * Convert a number to a u64 ScVal with 2 decimal precision
+ * Convert a number to a u64 ScVal
  */
 export const numberToU64 = (val: number) => {
-    const num = parseInt((val * 100).toFixed(0));
+    // Use the direct value instead of multiplying by 100
+    const num = parseInt(val.toString());
     return nativeToScVal(num, { type: "u64" });
 };
 
 /**
- * Convert a number to an i128 ScVal with 2 decimal precision
+ * Convert a number to an i128 ScVal
  */
 export const numberToI128 = (val: number) => {
-    const num = parseInt((val * 100).toFixed(0));
+    console.log('input val val:', val);
+    // Use the direct value instead of multiplying by 100
+    const num = parseInt(val.toString());
+    console.log('num:', num);
     return nativeToScVal(num, { type: "i128" });
 };
 
