@@ -605,37 +605,16 @@ export const useSmartWallet = () => {
             return;
         }
 
-        // Get existing limits for the signer
-        const existingLimits = new Map();
-        try {
-            const signerInfo = signers.find(s => s.key === signerPublicKey);
-            if (signerInfo?.limits) {
-                Object.entries(signerInfo.limits).forEach(([contractId, policies]) => {
-                    existingLimits.set(contractId, policies);
-                });
-            }
-        } catch (error) {
-            console.error('Error getting existing limits:', error);
-        }
-
-        // Get existing policies for this contract or initialize empty array
-        const existingPolicies = existingLimits.get(contractIdToLimit) || [];
-
-        // Add the new policy to the existing ones
-        const updatedPolicies = [
-            ...existingPolicies,
-            {
-                key: "Policy",
-                value: policyId
-            }
-        ];
-
-        // Update the limits map with both existing and new policies
-        existingLimits.set(contractIdToLimit, updatedPolicies);
+        // Create a new limits map with just the single policy
+        const limits = new Map();
+        limits.set(contractIdToLimit, [{
+            key: "Policy",
+            value: policyId
+        }]);
 
         const at = await account.updateEd25519(
             signerPublicKey,
-            existingLimits,
+            limits,
             SignerStore.Temporary
         );
         const signedTx = await account.sign(at, { keyId });
@@ -722,6 +701,7 @@ export const useSmartWallet = () => {
         addPolicy,
         removeSigner,
         safeRemovePolicy,
-        detachPolicy
+        detachPolicy,
+        getSignerSecret
     }
 }

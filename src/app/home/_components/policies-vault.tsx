@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Copy, Share2, Trash2, FileText, Loader2, Plus, MoreVertical, CircleDollarSign, EuroIcon, StarIcon, Combine } from "lucide-react";
+import { Copy, Share2, Trash2, FileText, Loader2, Plus, MoreVertical, CircleDollarSign, EuroIcon, StarIcon, Combine, LucideFileLock2, Pencil } from "lucide-react";
 import { copyToClipboard, shortAddress, policyAssignmentUtils } from "~/lib/utils";
 import {
     DropdownMenu,
@@ -109,6 +109,9 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
     const { addPolicy, safeRemovePolicy, detachPolicy } = useSmartWallet();
     const [isRemoving, setIsRemoving] = useState(false);
     const [deletingPolicyId, setDeletingPolicyId] = useState<string | null>(null);
+    const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+    const [newPolicyName, setNewPolicyName] = useState("");
+    const [newPolicyDescription, setNewPolicyDescription] = useState("");
 
     const form = useForm<z.infer<typeof policyFormSchema>>({
         resolver: zodResolver(policyFormSchema),
@@ -211,6 +214,38 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
         }
     }
 
+    const handleEditPolicy = () => {
+        if (!editingPolicy || !newPolicyName.trim()) return;
+
+        try {
+            // Update in localStorage
+            const storedPolicies: StoredPolicies = JSON.parse(localStorage.getItem("zg:wallet_policies") || "{}");
+            const walletPolicies = storedPolicies[walletId] || [];
+            const policyIndex = walletPolicies.findIndex(p => p.id === editingPolicy.id);
+
+            if (policyIndex !== -1) {
+                walletPolicies[policyIndex] = {
+                    ...editingPolicy,
+                    name: newPolicyName.trim(),
+                    description: newPolicyDescription.trim()
+                };
+                storedPolicies[walletId] = walletPolicies;
+                localStorage.setItem("zg:wallet_policies", JSON.stringify(storedPolicies));
+
+                // Update local state
+                setPolicies(walletPolicies);
+                toast.success("Policy updated successfully");
+            }
+        } catch (error) {
+            console.error("Error updating policy:", error);
+            toast.error("Failed to update policy");
+        } finally {
+            setEditingPolicy(null);
+            setNewPolicyName("");
+            setNewPolicyDescription("");
+        }
+    };
+
     return (
         <div className="mt-4 space-y-3">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
@@ -252,7 +287,7 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
                             )}
                             <div className="flex items-center gap-2">
                                 <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gray-50 border border-gray-200">
-                                    <FileText className="h-3.5 w-3.5 text-gray-500" />
+                                    <LucideFileLock2 className="h-3.5 w-3.5 text-gray-500" />
                                 </div>
                                 <div>
                                     <h4 className="text-xs font-medium text-gray-900">{policy.name}</h4>
@@ -280,6 +315,17 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
                                     <DropdownMenuItem className="text-xs" onClick={() => copyToClipboard(policy.content)}>
                                         <Copy className="mr-2 h-3.5 w-3.5" />
                                         <span>Copy Address</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        className="text-xs"
+                                        onClick={() => {
+                                            setEditingPolicy(policy);
+                                            setNewPolicyName(policy.name);
+                                            setNewPolicyDescription(policy.description);
+                                        }}
+                                    >
+                                        <Pencil className="mr-2 h-3.5 w-3.5" />
+                                        <span>Edit Policy</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
@@ -393,6 +439,52 @@ export function PoliciesVault({ walletId }: { walletId: string }) {
                             </DialogFooter>
                         </form>
                     </Form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Policy Dialog */}
+            <Dialog open={!!editingPolicy} onOpenChange={(open) => !open && setEditingPolicy(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Policy</DialogTitle>
+                        <DialogDescription>
+                            Update the name and description for this policy.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Name</label>
+                            <Input
+                                value={newPolicyName}
+                                onChange={(e) => setNewPolicyName(e.target.value)}
+                                placeholder="Enter policy name"
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Description</label>
+                            <Textarea
+                                value={newPolicyDescription}
+                                onChange={(e) => setNewPolicyDescription(e.target.value)}
+                                placeholder="Enter policy description"
+                                className="w-full"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setEditingPolicy(null)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleEditPolicy}
+                            disabled={!newPolicyName.trim()}
+                        >
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
