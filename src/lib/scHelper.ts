@@ -171,3 +171,31 @@ export async function submitTransaction(
         throw new Error(`Transaction submission failed: ${error.message}`);
     }
 }
+
+/**
+ * Get the default value for an address parameter based on its name
+ * Used to prefill address fields in UI forms
+ */
+export function getDefaultAddressValue(paramName: string): string | undefined {
+    const addressParamNames = ['from', 'source', 'user'];
+
+    // If parameter name matches one of the address parameter names
+    if (addressParamNames.includes(paramName.toLowerCase())) {
+        // Return the contractId from localStorage or URL query parameter
+        try {
+            // Try to get from URL params first (keyId)
+            const urlParams = new URLSearchParams(window.location.search);
+            const keyId = urlParams.get('keyId');
+
+            if (keyId) {
+                // If we have a keyId, we can return the contractId (walletId) from state
+                // This needs to be handled by the component using this function
+                return '__CURRENT_WALLET_ID__';
+            }
+        } catch (error) {
+            console.error('Error getting default address value:', error);
+        }
+    }
+
+    return undefined;
+}

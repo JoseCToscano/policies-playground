@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
 import { useSmartWallet } from '~/hooks/useSmartWallet'
-import { account, copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
+import { account, bigIntReplacer, copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
 import {
   Copy,
   DollarSign,
@@ -66,7 +66,7 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip"
 import { SAC_FUNCTION_DOCS } from "~/lib/constants/sac";
-import { addressToScVal, boolToScVal, i128ToScVal, numberToI128, numberToU64, stringToSymbol, u128ToScVal, u32ToScVal } from "~/lib/scHelper";
+import { addressToScVal, boolToScVal, getDefaultAddressValue, i128ToScVal, numberToI128, numberToU64, stringToSymbol, u128ToScVal, u32ToScVal } from "~/lib/scHelper";
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
@@ -337,6 +337,18 @@ const popularContracts: PopularContract[] = [
     description: "Blend Protocol",
     address: "CCHZKMVGSP3N4YEHD4EFHA6UKND5NDVP4COTAFENAFMPRNTEC2U2ST5F",
     icon: <Combine className="h-3.5 w-3.5" />
+  },
+  {
+    name: "Zafegard",
+    description: "@kalepail's Zafegard Demo",
+    address: "CCHZKMVGSP3N4YEHD4EFHA6UKND5NDVP4COTAFENAFMPRNTEC2U2ST5F",
+    icon: <Combine className="h-3.5 w-3.5" />
+  },
+  {
+    name: "Do Math",
+    description: "@kalepail's Do Math Demo",
+    address: "CAXZG5WRNRY4ZDG6UPNFAQ2HY77HPETA7YIQDKFK4JENRVH43X2TREW6",
+    icon: <Combine className="h-3.5 w-3.5" />
   }
 ];
 
@@ -375,6 +387,11 @@ const getPlaceholder = (type: string): string => {
   }
 };
 
+// Helper to check if a parameter is an address type and should get a default value
+const shouldUseDefaultAddressValue = (paramName: string, paramType: string): boolean => {
+  return paramType === 'address' && ['from', 'source', 'user'].includes(paramName.toLowerCase());
+};
+
 const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?: string }) => {
   const [contractAddress, setContractAddress] = useState("");
   const [loading, setLoading] = useState(false);
@@ -387,6 +404,7 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
   const [callResult, setCallResult] = useState<string | null>(null);
   const [callError, setCallError] = useState<string | null>(null);
   const [isCalling, setIsCalling] = useState(false);
+  const { signXDR, signAndSend } = useSmartWallet();
 
   const submitXDRMutation = api.stellar.submitXDR.useMutation({
     onSuccess: (data) => {
@@ -414,6 +432,12 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
     { contractAddress },
     { enabled: contractAddress.length > 0 }
   );
+
+  const { mutateAsync: prepareContractCall, isPending: isLoadingPrepareContractCall } = api.stellar.prepareContractCall.useMutation({
+    onSuccess: (data) => {
+      console.log('prepareContractCall', data);
+    }
+  });
 
   useEffect(() => {
     if (contractMetadata) {
@@ -455,6 +479,29 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
         break;
     }
   };
+
+  // Set initial parameter value based on parameter type and name
+  const getInitialParamValue = useCallback((param: any) => {
+    // For address parameters with specific names, use the wallet ID
+    if (shouldUseDefaultAddressValue(param.name, param.type) && mainWalletId) {
+      return mainWalletId;
+    }
+    return "";
+  }, [mainWalletId]);
+
+  // When function selection changes, initialize params with default values
+  useEffect(() => {
+    if (selectedFunction && metadata) {
+      const fn = metadata.functions.find((f: any) => f.name === selectedFunction);
+      if (fn) {
+        const initialParams: Record<string, string> = {};
+        fn.parameters.forEach((param: any) => {
+          initialParams[param.name] = getInitialParamValue(param);
+        });
+        setFunctionParams(initialParams);
+      }
+    }
+  }, [selectedFunction, metadata, getInitialParamValue]);
 
   // Prepare parameters for contract call
   const prepareCallParameters = () => {
@@ -522,27 +569,18 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
     try {
       const functionParams = metadata?.functions.find((f: ContractFunction) => f.name === fn)?.parameters || [];
       const isReadOnly = isReadOnlyFunction(fn);
-
       // Build parameters array with correct ScVal conversions
       const scValParams: any[] = functionParams.map((param: { name: string; type: string }) => {
         const value = params[param.name];
-        return paramToScVal(value, param.type);
+        return value //; paramToScVal(value, param.type);
       });
-
-      // This is a custom procedure we'll add to the router
-      const response = await fetch('/api/prepare-contract-call', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contractAddress,
-          method: fn,
-          args: scValParams,
-          isReadOnly
-        }),
-      }).then(res => res.json());
-
+      if (!mainWalletId) {
+        throw new Error("Main wallet ID is required");
+      }
+      const response = await prepareContractCall({ contractAddress, method: fn, args: scValParams, isReadOnly, walletContractId: mainWalletId });
+      if (!response) {
+        throw new Error("Failed to prepare contract call");
+      }
       return response.xdr;
     } catch (error) {
       console.error("Error creating contract call XDR:", error);
@@ -590,14 +628,21 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
         }
       } else {
         // For write functions, we need to generate and submit XDR
+        console.log('params:', params);
         const xdr = await createContractCallXdr(selectedFunction, params);
-
+        console.log('xdr:', xdr);
         if (!xdr) {
           throw new Error("Failed to create transaction XDR");
         }
 
+        const result = await signAndSend(xdr, "Secp256r1");
+        if (result) {
+          toast.success("Function called successfully");
+          setCallResult(JSON.stringify(result, bigIntReplacer, 2));
+        }
+
         // Submit the XDR
-        await submitXDRMutation.mutateAsync({ xdr });
+        // await submitXDRMutation.mutateAsync({ xdr: signedXdr });
       }
     } catch (error: any) {
       console.error("Error calling contract function:", error);
@@ -903,7 +948,7 @@ const ContractCall = ({ signer, mainWalletId }: { signer?: string; mainWalletId?
                                       });
                                     }
                                   }}
-                                  placeholder={getPlaceholder(param.type)}
+                                  placeholder={shouldUseDefaultAddressValue(param.name, param.type) ? "Current wallet address" : getPlaceholder(param.type)}
                                   className={cn(
                                     "font-mono text-sm h-9",
                                     paramErrors[param.name] && "border-red-500"
