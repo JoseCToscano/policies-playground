@@ -96,7 +96,7 @@ const popularContracts: ComboboxItem[] = [
     {
         label: "Contact's list",
         description: "@JoseCToscano's Contact's Smart Contract Demo",
-        value: "CA7RPHRR5MCWBPDD4ZT6M6AIME7KTZH5QRHFT45GXNAXCQ3VW3ABJXAZ",
+        value: "CDOCQ4YNWDPWB3HHGQQCVCX5PWJYHWYKYAC2PCE237WWZFQNW2GYXSDA",
         icon: <Combine className="h-3.5 w-3.5" />
     },
 ];

@@ -137,7 +137,7 @@ const popularContracts: PopularContract[] = [
     {
         name: "Contact's list",
         description: "@JoseCToscano's Contact's Smart Contract Demo",
-        address: "CA7RPHRR5MCWBPDD4ZT6M6AIME7KTZH5QRHFT45GXNAXCQ3VW3ABJXAZ",
+        address: "CDOCQ4YNWDPWB3HHGQQCVCX5PWJYHWYKYAC2PCE237WWZFQNW2GYXSDA",
         icon: <LucideBookUser className="h-3.5 w-3.5" />,
         githubUrl: 'https://github.com/JoseCToscano/policies-playground'
     },
@@ -600,7 +600,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                                 variant="outline"
                                 size="icon"
                                 onClick={() => {
-                                    navigator.clipboard.writeText(contractAddress);
+                                    copyToClipboard(contractAddress);
                                 }}
                             >
                                 <Copy className="h-3.5 w-3.5" />

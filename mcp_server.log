@@ -1,0 +1,58 @@
+2025-03-28T17:22:20.386Z - params: {"owner":"CCD3YXU2B4JTHKCVS4NDXJJNNWEFEWBMAEAXWZSV7TAIXW2LK3QZAQOD","nickname":"Moam","address":"CCD3YXU2B4JTHKCVS4NDXJJNNWEFEWBMAEAXWZSV7TAIXW2LK3QZAQOD"}
+2025-03-28T17:22:20.640Z - functionToCall: function assembleTransaction(args, methodOptions) {
+        return _assembled_transaction.AssembledTransaction.build(_objectSpread(_objectSpread(_objectSpread({
+          method: method,
+          args: args && spec.funcArgsToScVals(method, args)
+        }, options), methodOptions), {}, {
+          errorTypes: spec.errorCases().reduce(function (acc, curr) {
+            return _objectSpread(_objectSpread({}, acc), {}, _defineProperty({}, curr.value(), {
+              message: curr.doc().toString()
+            }));
+          }, {}),
+          parseResultXdr: function parseResultXdr(result) {
+            return spec.funcResToNative(method, result);
+          }
+        }));
+      }
+2025-03-28T17:22:20.728Z - result: [object Object]
+2025-03-28T17:22:20.728Z - txXdr: AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqCNQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAABn5tv4AAAAAAAAAAEAAAAAAAAAGAAAAAAAAAAB3ChzDbDfYOznNCAqiv19k4PbCsAFp4ia3+1slg22jYsAAAALYWRkX2NvbnRhY3QAAAAAAwAAABIAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZAAAAAPAAAABE1vYW0AAAASAAAAAYe8XpoPEzOoVZcaO6UtbYhSWCwBAXtmVfzAi9tLVuGQAAAAAQAAAAEAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZBz2owHRyVp+wAAAAAAAAABAAAAAAAAAAHcKHMNsN9g7Oc0ICqK/X2Tg9sKwAWniJrf7WyWDbaNiwAAAAthZGRfY29udGFjdAAAAAADAAAAEgAAAAGHvF6aDxMzqFWXGjulLW2IUlgsAQF7ZlX8wIvbS1bhkAAAAA8AAAAETW9hbQAAABIAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZAAAAAAAAAAAQAAAAAAAAADAAAABgAAAAGHvF6aDxMzqFWXGjulLW2IUlgsAQF7ZlX8wIvbS1bhkAAAABQAAAABAAAAB6iGAoDLn5M1tiP4Gk6A6Jp5IAJCdbF38tS/+mql+1YGAAAAB8nvRMZk5+b/os0mcTYEOxFRbZPUvHI8Hes97sp0CwiaAAAAAgAAAAYAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZAAAAAVc9qMB0clafsAAAAAAAAABgAAAAHcKHMNsN9g7Oc0ICqK/X2Tg9sKwAWniJrf7WyWDbaNiwAAABQAAAABAFL87AAAcJQAAAPMAAAAAAAqCHAAAAAA
+2025-03-28T17:24:06.239Z - params: {"owner":"CCD3YXU2B4JTHKCVS4NDXJJNNWEFEWBMAEAXWZSV7TAIXW2LK3QZAQOD","nickname":"maam","address":"CCD3YXU2B4JTHKCVS4NDXJJNNWEFEWBMAEAXWZSV7TAIXW2LK3QZAQOD"}
+2025-03-28T17:24:06.650Z - functionToCall: function assembleTransaction(args, methodOptions) {
+        return _assembled_transaction.AssembledTransaction.build(_objectSpread(_objectSpread(_objectSpread({
+          method: method,
+          args: args && spec.funcArgsToScVals(method, args)
+        }, options), methodOptions), {}, {
+          errorTypes: spec.errorCases().reduce(function (acc, curr) {
+            return _objectSpread(_objectSpread({}, acc), {}, _defineProperty({}, curr.value(), {
+              message: curr.doc().toString()
+            }));
+          }, {}),
+          parseResultXdr: function parseResultXdr(result) {
+            return spec.funcResToNative(method, result);
+          }
+        }));
+      }
+2025-03-28T17:24:06.760Z - result: [object Object]
+2025-03-28T17:24:06.760Z - txXdr: AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqCMAAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAABn5txiAAAAAAAAAAEAAAAAAAAAGAAAAAAAAAAB3ChzDbDfYOznNCAqiv19k4PbCsAFp4ia3+1slg22jYsAAAALYWRkX2NvbnRhY3QAAAAAAwAAABIAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZAAAAAPAAAABG1hYW0AAAASAAAAAYe8XpoPEzOoVZcaO6UtbYhSWCwBAXtmVfzAi9tLVuGQAAAAAQAAAAEAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZADjoR0tnq22gAAAAAAAAABAAAAAAAAAAHcKHMNsN9g7Oc0ICqK/X2Tg9sKwAWniJrf7WyWDbaNiwAAAAthZGRfY29udGFjdAAAAAADAAAAEgAAAAGHvF6aDxMzqFWXGjulLW2IUlgsAQF7ZlX8wIvbS1bhkAAAAA8AAAAEbWFhbQAAABIAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZAAAAAAAAAAAQAAAAAAAAADAAAABgAAAAGHvF6aDxMzqFWXGjulLW2IUlgsAQF7ZlX8wIvbS1bhkAAAABQAAAABAAAAB6iGAoDLn5M1tiP4Gk6A6Jp5IAJCdbF38tS/+mql+1YGAAAAB8nvRMZk5+b/os0mcTYEOxFRbZPUvHI8Hes97sp0CwiaAAAAAgAAAAYAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZAAAAAVA46EdLZ6ttoAAAAAAAAABgAAAAHcKHMNsN9g7Oc0ICqK/X2Tg9sKwAWniJrf7WyWDbaNiwAAABQAAAABAFL6lQAAcJQAAAPMAAAAAAAqCFwAAAAA
+2025-03-28T17:24:06.858Z - hello
+2025-03-28T17:24:06.858Z - isReadCall: false
+2025-03-28T17:27:18.110Z - params: {"owner":"CCD3YXU2B4JTHKCVS4NDXJJNNWEFEWBMAEAXWZSV7TAIXW2LK3QZAQOD","nickname":"maam","address":"CCD3YXU2B4JTHKCVS4NDXJJNNWEFEWBMAEAXWZSV7TAIXW2LK3QZAQOD"}
+2025-03-28T17:27:18.668Z - functionToCall: function assembleTransaction(args, methodOptions) {
+        return _assembled_transaction.AssembledTransaction.build(_objectSpread(_objectSpread(_objectSpread({
+          method: method,
+          args: args && spec.funcArgsToScVals(method, args)
+        }, options), methodOptions), {}, {
+          errorTypes: spec.errorCases().reduce(function (acc, curr) {
+            return _objectSpread(_objectSpread({}, acc), {}, _defineProperty({}, curr.value(), {
+              message: curr.doc().toString()
+            }));
+          }, {}),
+          parseResultXdr: function parseResultXdr(result) {
+            return spec.funcResToNative(method, result);
+          }
+        }));
+      }
+2025-03-28T17:27:18.765Z - result: [object Object]
+2025-03-28T17:27:18.767Z - txXdr: AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqCJwAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAABn5t0iAAAAAAAAAAEAAAAAAAAAGAAAAAAAAAAB3ChzDbDfYOznNCAqiv19k4PbCsAFp4ia3+1slg22jYsAAAALYWRkX2NvbnRhY3QAAAAAAwAAABIAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZAAAAAPAAAABG1hYW0AAAASAAAAAYe8XpoPEzOoVZcaO6UtbYhSWCwBAXtmVfzAi9tLVuGQAAAAAQAAAAEAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZB17ykqVto3CgAAAAAAAAABAAAAAAAAAAHcKHMNsN9g7Oc0ICqK/X2Tg9sKwAWniJrf7WyWDbaNiwAAAAthZGRfY29udGFjdAAAAAADAAAAEgAAAAGHvF6aDxMzqFWXGjulLW2IUlgsAQF7ZlX8wIvbS1bhkAAAAA8AAAAEbWFhbQAAABIAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZAAAAAAAAAAAQAAAAAAAAADAAAABgAAAAGHvF6aDxMzqFWXGjulLW2IUlgsAQF7ZlX8wIvbS1bhkAAAABQAAAABAAAAB6iGAoDLn5M1tiP4Gk6A6Jp5IAJCdbF38tS/+mql+1YGAAAAB8nvRMZk5+b/os0mcTYEOxFRbZPUvHI8Hes97sp0CwiaAAAAAgAAAAYAAAABh7xemg8TM6hVlxo7pS1tiFJYLAEBe2ZV/MCL20tW4ZAAAAAVde8pKlbaNwoAAAAAAAAABgAAAAHcKHMNsN9g7Oc0ICqK/X2Tg9sKwAWniJrf7WyWDbaNiwAAABQAAAABAFL6lQAAcJQAAAPMAAAAAAAqCDgAAAAA
+2025-03-28T17:27:18.851Z - hello
+2025-03-28T17:27:18.851Z - isReadCall: false

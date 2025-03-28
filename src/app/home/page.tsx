@@ -156,64 +156,74 @@ export default function PasskeyCreation() {
 
               {/* Wallet Balance Section */}
               <div className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-medium text-gray-500">Total Balance</h3>
-                  {contractId && (
-                    <button
-                      onClick={() => { fundWallet(contractId!) }}
-                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                    >
-                      {isFunding ? (
-                        <span className="flex items-center">
-                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                          Funding...
-                        </span>
-                      ) : "Fund wallet"}
-                    </button>
-                  )}
-                </div>
+                {contractId ? (
+                  <>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xs font-medium text-gray-500">Total Balance</h3>
+                      <button
+                        onClick={() => { fundWallet(contractId) }}
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                      >
+                        {isFunding ? (
+                          <span className="flex items-center">
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Funding...
+                          </span>
+                        ) : "Fund wallet"}
+                      </button>
+                    </div>
 
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center">
-                    <span className="text-base text-gray-900 font-medium tracking-tight">
-                      <span className="text-gray-400 mr-1.5">$</span>
-                      {fromStroops(contractBalance?.[USDC] ?? "0", 2)} USD
-                    </span>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center">
+                        <span className="text-base text-gray-900 font-medium tracking-tight">
+                          <span className="text-gray-400 mr-1.5">$</span>
+                          {fromStroops(contractBalance?.[USDC] ?? "0", 2)} USD
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-base text-gray-900 font-medium tracking-tight">
+                          <span className="text-gray-400 mr-1.5">€</span>
+                          {fromStroops(contractBalance?.[EURC] ?? "0", 2)} EUR
+                        </span>
+                      </div>
+                      <div className="pt-2 border-t border-gray-50">
+                        <span className="text-xs text-gray-500">
+                          {fromStroops(balance)} XLM
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-6">
+                    <div className="mx-auto h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
+                      <Fingerprint className="h-6 w-6 text-indigo-600" />
+                    </div>
+                    <h3 className="text-sm font-medium text-gray-900 mb-1">Get Started with Smart Wallet</h3>
+                    <p className="text-xs text-gray-500 mb-6">Create a secure biometric wallet to manage your digital assets with enhanced security.</p>
+                    <div className="space-y-3">
+                      {keyId && (
+                        <Button
+                          onClick={() => connect(keyId)}
+                          className="w-full bg-white border-2 border-indigo-600 text-xs text-indigo-600 hover:bg-indigo-50"
+                        >
+                          <ScanFaceIcon className="mr-2 h-3.5 w-3.5" />
+                          Connect Existing Wallet
+                        </Button>
+                      )}
+                      <Button
+                        onClick={() => create()}
+                        className="w-full bg-indigo-600 text-xs text-white hover:bg-indigo-700"
+                      >
+                        <Plus className="mr-2 h-3.5 w-3.5" />
+                        Create New Wallet
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <span className="text-base text-gray-900 font-medium tracking-tight">
-                      <span className="text-gray-400 mr-1.5">€</span>
-                      {fromStroops(contractBalance?.[EURC] ?? "0", 2)} EUR
-                    </span>
-                  </div>
-                  <div className="pt-2 border-t border-gray-50">
-                    <span className="text-xs text-gray-500">
-                      {fromStroops(balance)} XLM
-                    </span>
-                  </div>
-                </div>
+                )}
 
                 {/* Wallet Actions */}
-                <div className="space-y-2">
-                  {!contractId && keyId && (
-                    <Button
-                      onClick={() => connect(keyId!)}
-                      className="w-full bg-indigo-600 text-xs text-white hover:bg-indigo-700"
-                    >
-                      <ScanFaceIcon className="mr-2 h-3.5 w-3.5" />
-                      Connect
-                    </Button>
-                  )}
-                  {!contractId && (
-                    <Button
-                      onClick={() => create()}
-                      className="w-full bg-indigo-600 text-xs text-white hover:bg-indigo-700"
-                    >
-                      <ScanFaceIcon className="mr-2 h-3.5 w-3.5" />
-                      Create Smart Wallet
-                    </Button>
-                  )}
-                  {contractId && (
+                {contractId && (
+                  <div className="space-y-2">
                     <Button
                       onClick={handleAddSigner}
                       className="w-full bg-indigo-600 text-xs text-white hover:bg-indigo-700"
@@ -231,8 +241,8 @@ export default function PasskeyCreation() {
                         </>
                       )}
                     </Button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
 
