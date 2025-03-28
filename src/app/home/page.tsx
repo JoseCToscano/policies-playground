@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { Button } from "~/components/ui/button"
 import { useSmartWallet } from '~/hooks/useSmartWallet'
 import { copyToClipboard, fromStroops, shortAddress } from '~/lib/utils'
@@ -23,7 +23,7 @@ import { Badge } from "~/components/ui/badge"
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
-export default function PasskeyCreation() {
+function HomeContent() {
   const { create, connect, getWalletSigners, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, isFunding, getWalletBalance, attachPolicy } = useSmartWallet();
 
   const [isAttachingPolicy, setIsAttachingPolicy] = useState(false);
@@ -296,5 +296,13 @@ export default function PasskeyCreation() {
       </div>
     </div>
   )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomeContent />
+    </Suspense>
+  );
 }
 

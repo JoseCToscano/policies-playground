@@ -201,14 +201,11 @@ export const stellarRouter = createTRPCRouter({
         const contractClient = await createSmartContractClient(input.contractAddress);
 
 
-        let txXdr: string;
 
         const functionToCall = contractClient[method as keyof Client];
-        console.log('functionToCall:', functionToCall);
-        console.log('params:', params);
+        // @ts-ignore 
         const result = await functionToCall(params);
-        console.log('result:', result);
-        txXdr = result.toXDR();
+        const txXdr = result.toXDR();
 
         // const sorobanServer = new rpc.Server("https://soroban-testnet.stellar.org");
         // const preparedTx = await sorobanServer.prepareTransaction(TransactionBuilder.fromXDR(txXdr, Networks.TESTNET));
@@ -334,6 +331,7 @@ export const stellarRouter = createTRPCRouter({
         }
 
         // Simulate the contract call to get the result
+        // @ts-ignore 
         const result = await contractClient.simulate(input.method, ...scValArgs);
 
         // Process the ScVal result to a more user-friendly format

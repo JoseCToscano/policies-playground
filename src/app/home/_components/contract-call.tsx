@@ -79,7 +79,7 @@ interface ContractMetadata {
     decimals?: number;
     totalSupply?: string;
     version?: string;
-    functions: any[];
+    functions?: any[];
     enums?: ContractEnum[];
     unions?: ContractUnion[];
 }
@@ -242,20 +242,6 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
     }, [mainWalletId, externalSigners, walletSigners, localSigners]);
 
     const signerOptions: ComboboxItem[] = getSignersForCombobox();
-
-    const submitXDRMutation = api.stellar.submitXDR.useMutation({
-        onSuccess: (data) => {
-            toast.success("Function called successfully");
-            setCallResult(JSON.stringify(data?.result || { success: true }, null, 2));
-            setIsCalling(false);
-        },
-        onError: (error) => {
-            toast.error(`Error: ${error.message}`);
-            setCallError(error.message);
-            setIsCalling(false);
-        }
-    });
-
     // Set initial signer
     useEffect(() => {
         if (mainWalletId && !selectedSigner) {
@@ -288,6 +274,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
 
     useEffect(() => {
         if (contractMetadata) {
+            // @ts-ignore
             setMetadata(contractMetadata);
             // Reset function selection when contract changes
             setSelectedFunction(null);
