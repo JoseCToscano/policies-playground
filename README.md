@@ -1,29 +1,78 @@
-# Create T3 App
+# Smart Wallet with Policies
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+A Next.js application that implements a smart wallet with biometric authentication and policy management on the Stellar network.
 
-## What's next? How do I make an app with this?
+## Features
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+- 🔐 **Biometric Authentication**: Secure wallet access using biometric verification
+- 💼 **Multi-Signature Support**: Add and manage multiple signers for enhanced security
+- 📜 **Policy Management**: Create and attach policies to control transaction limits
+- 💰 **Asset Management**: Support for multiple assets including XLM, USDC, and EURC
+- 🔄 **Contract Interactions**: Direct interaction with Stellar smart contracts
+- 🎨 **Modern UI**: Clean and intuitive interface built with Tailwind CSS
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## Getting Started
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+1. Clone the repository
 
-## Learn More
+```bash
+git clone [your-repo-url]
+cd [your-repo-name]
+```
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+2. Install dependencies
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+```bash
+npm install
+```
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+3. Run the development server
 
-## How do I deploy this?
+```bash
+npm run dev
+```
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+## Tech Stack
+
+- **Framework**: [Next.js](https://nextjs.org)
+- **Smart Contracts**: Stellar Network
+- **Styling**: [Tailwind CSS](https://tailwindcss.com)
+- **Authentication**: Biometric (WebAuthn)
+- **State Management**: React Hooks + Context
+- **API Integration**: tRPC
+
+## Project Structure
+
+- `/src/app` - Next.js application routes and pages
+- `/src/components` - Reusable UI components
+- `/src/hooks` - Custom React hooks for wallet and authentication
+- `/src/lib` - Utility functions and helpers
+- `/src/trpc` - tRPC API routes and configurations
+
+## Features in Detail
+
+### Smart Wallet
+
+- Create and manage wallets with biometric authentication
+- View balances across multiple assets
+- Fund wallets with test assets
+
+### Signers Management
+
+- Add multiple signers with custom names and purposes
+- Manage signer permissions and policies
+- Remove signers when needed
+
+### Policy System
+
+- Create custom transaction policies
+- Set spending limits per asset
+- Attach policies to specific signers
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+[Your License] - See LICENSE file for details
