@@ -279,15 +279,6 @@ export function SignersList({ walletId, onAttachPolicy }: {
                 </div>
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No signers</h3>
                 <p className="mt-1 text-sm text-gray-500">Get started by adding a new signer to your wallet.</p>
-                <div className="mt-6">
-                    <Button
-                        onClick={() => setIsAddOpen(true)}
-                        className="text-xs"
-                    >
-                        <Plus className="mr-1 h-3.5 w-3.5" />
-                        New Signer
-                    </Button>
-                </div>
             </div>
         );
     }

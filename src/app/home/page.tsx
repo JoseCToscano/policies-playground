@@ -24,7 +24,7 @@ const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
 function HomeContent() {
-  const { create, connect, getWalletSigners, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, isFunding, getWalletBalance, attachPolicy } = useSmartWallet();
+  const { create, connect, getWalletSigners, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, isFunding, getWalletBalance, attachPolicy, isConnecting } = useSmartWallet();
 
   const [isAttachingPolicy, setIsAttachingPolicy] = useState(false);
 
@@ -213,9 +213,19 @@ function HomeContent() {
                       <Button
                         onClick={() => create()}
                         className="w-full bg-indigo-600 text-xs text-white hover:bg-indigo-700"
+                        disabled={isConnecting}
                       >
-                        <Plus className="mr-2 h-3.5 w-3.5" />
-                        Create New Wallet
+                        {isConnecting ? (
+                          <>
+                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            Creating Wallet...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="mr-2 h-3.5 w-3.5" />
+                            Create New Wallet
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>

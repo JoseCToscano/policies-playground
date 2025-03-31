@@ -226,6 +226,9 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
         // Add other signers from wallet or externally provided
         const allSigners = externalSigners || walletSigners || [];
         allSigners.forEach(signer => {
+            if (signer.kind === 'Secp256r1' || signer.kind === 'Policy') {
+                return;
+            }
             // Only add if not already added (by localStorage)
             const key = signer.key || signer.publicKey;
             if (!signersList.some(s => s.value === key)) {
@@ -430,7 +433,6 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                 isReadOnly,
                 walletContractId: selectedSigner
             });
-            console.log('response', response);
             if (!response) {
                 throw new Error("Failed to prepare contract call");
             }

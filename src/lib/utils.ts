@@ -41,9 +41,9 @@ export function shortAddress(address?: string | null) {
 export const rpc = new Server(env.NEXT_PUBLIC_RPC_URL);
 
 export const account = new PasskeyKit({
-  rpcUrl: env.NEXT_PUBLIC_RPC_URL,
-  networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
-  walletWasmHash: env.NEXT_PUBLIC_WALLET_WASM_HASH,
+  rpcUrl: "https://soroban-testnet.stellar.org",
+  networkPassphrase: "Test SDF Network ; September 2015",
+  walletWasmHash: "a8860280cb9f9335b623f81a4e80e89a7920024275b177f2d4bffa6aa5fb5606",
 });
 
 export const server = new PasskeyServer({
