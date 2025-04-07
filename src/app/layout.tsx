@@ -7,8 +7,8 @@ import { TRPCReactProvider } from "~/trpc/react";
 import ToasterProvider from "~/providers/toaster-provider";
 
 export const metadata: Metadata = {
-  title: "Freelii Business",
-  description: "Digital banking for businesses",
+  title: "Passkey Wallet Sandbox",
+  description: "Passkey Wallet Sandbox",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
