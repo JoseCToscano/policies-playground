@@ -19,7 +19,7 @@ export const useSmartWallet = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [signers, setSigners] = useState<any[]>([]);
     const [isFunding, setIsFunding] = useState<boolean>(false);
-    const [zafeguardPolicy, setZafeguardPolicy] = useState<string | null>(null);
+    const [isCreating, setIsCreating] = useState<boolean>(false);
     const [subWallets, setSubWallets] = useState<Map<string, { secret: string, email: string, name: string, limitPerTransaction: number }> | null>(null);
     const [isConnecting, setIsConnecting] = useState<boolean>(false);
 
@@ -117,6 +117,7 @@ export const useSmartWallet = () => {
 
 
     const create = async () => {
+        setIsCreating(true);
         try {
             const user = prompt("Give this passkey a name");
 
@@ -149,6 +150,8 @@ export const useSmartWallet = () => {
         } catch (error) {
             console.error(error);
             toast.error((error as Error)?.message ?? "Unknown error");
+        } finally {
+            setIsCreating(false);
         }
     }
 
@@ -510,6 +513,7 @@ export const useSmartWallet = () => {
         removeSigner,
         safeRemovePolicy,
         detachPolicy,
-        getSignerSecret
+        getSignerSecret,
+        isCreating
     }
 }

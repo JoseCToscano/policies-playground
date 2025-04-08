@@ -20,11 +20,12 @@ import { ContractCall } from '~/app/home/_components/contract-call'
 import { SignerInfo, SignersList, StoredSigners } from '~/app/home/_components/signers-list'
 import { Policy, PoliciesVault } from '~/app/home/_components/policies-vault'
 import { Badge } from "~/components/ui/badge"
+import { LoadingDots } from '~/components/ui/loading-dots'
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
 function HomeContent() {
-  const { create, connect, getWalletSigners, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, isFunding, getWalletBalance, attachPolicy, isConnecting } = useSmartWallet();
+  const { create, connect, getWalletSigners, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, isFunding, getWalletBalance, attachPolicy, isCreating } = useSmartWallet();
 
   const [isAttachingPolicy, setIsAttachingPolicy] = useState(false);
 
@@ -213,13 +214,10 @@ function HomeContent() {
                       <Button
                         onClick={() => create()}
                         className="w-full bg-indigo-600 text-xs text-white hover:bg-indigo-700"
-                        disabled={isConnecting}
+                        disabled={isCreating}
                       >
-                        {isConnecting ? (
-                          <>
-                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                            Creating Wallet...
-                          </>
+                        {isCreating ? (
+                          <LoadingDots className="mr-2 h-3.5 w-3.5" />
                         ) : (
                           <>
                             <Plus className="mr-2 h-3.5 w-3.5" />
