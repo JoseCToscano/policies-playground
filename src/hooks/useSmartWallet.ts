@@ -119,6 +119,9 @@ export const useSmartWallet = () => {
     const create = async () => {
         setIsCreating(true);
         try {
+            const keypair = Keypair.random();
+            console.log('keypair', keypair.publicKey());
+            console.log('keypair', keypair.secret());
             const user = prompt("Give this passkey a name");
 
             if (!user) return;
