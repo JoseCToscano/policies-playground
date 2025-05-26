@@ -26,8 +26,8 @@ export default function Home() {
               </h1>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                 Transform any Soroban Smart Contract into an AI-ready interface with a single command.
-                Let users interact with blockchain through natural language: "Send 10 XLM to my mom"
-                or "Move 5% of my balance to the best yield instrument."
+                Let users interact with blockchain through natural language: &quot;Send 10 XLM to my mom&quot;
+                or &quot;Move 5% of my balance to the best yield instrument.&quot;
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
 
@@ -161,7 +161,7 @@ export default function Home() {
 
                 <p className="text-gray-600 mb-6">
                   A secure MCP server that handles account operations, XDR signing, and integrates
-                  with Stellar's passkey-based policy signers for delegated authorization.
+                  with Stellar&apos;s passkey-based policy signers for delegated authorization.
                 </p>
 
                 <div className="space-y-4 mb-6">
@@ -258,8 +258,8 @@ export default function Home() {
                     <div>$ npx stellar-policy-cli policy create</div>
                     <div className="text-gray-400"># Creating smart wallet...</div>
                     <div>$ policy add-signer --type ai-agent</div>
-                    <div>$ policy set-rule "max_amount: 100 XLM"</div>
-                    <div>$ policy set-rule "allowed_contracts: [DEFI_POOL]"</div>
+                    <div>$ policy set-rule &quot;max_amount: 100 XLM&quot;</div>
+                    <div>$ policy set-rule &quot;allowed_contracts: [DEFI_POOL]&quot;</div>
                     <div className="text-blue-400">✅ Policy signer configured!</div>
                   </div>
                 </div>
@@ -299,7 +299,7 @@ export default function Home() {
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">User Input</span>
                   </div>
-                  <p className="text-gray-800 font-medium italic">"Send 10 XLM to my mom"</p>
+                  <p className="text-gray-800 font-medium italic">&quot;Send 10 XLM to my mom&quot;</p>
                 </div>
 
                 <div className="space-y-3 mb-6">
@@ -309,7 +309,7 @@ export default function Home() {
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Resolves "mom" contact</span>
+                    <span className="text-sm text-gray-600">Resolves &quot;mom&quot; contact</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
@@ -350,7 +350,7 @@ export default function Home() {
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">User Input</span>
                   </div>
-                  <p className="text-gray-800 font-medium italic">"Move 5% of my balance to the best yield instrument"</p>
+                  <p className="text-gray-800 font-medium italic">&quot;Move 5% of my balance to the best yield instrument&quot;</p>
                 </div>
 
                 <div className="space-y-3 mb-6">
@@ -437,7 +437,7 @@ export default function Home() {
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">The Power of Natural Language</h3>
                 <p className="text-gray-600 max-w-4xl mx-auto leading-relaxed">
                   These examples showcase how our MCP integration transforms complex blockchain operations into
-                  intuitive conversations. Users don't need to understand smart contracts, XDRs, or transaction
+                  intuitive conversations. Users don&apos;t need to understand smart contracts, XDRs, or transaction
                   signing—they simply express their intent in natural language.
                 </p>
                 <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -460,7 +460,7 @@ export default function Home() {
             <div className="text-center mb-12">
               <h2 className="text-5xl font-bold text-gray-900 mb-6">Why This Matters</h2>
               <p className="text-xl text-gray-600 max-w-4xl mx-auto">
-                This isn't just a dev tool. It's infrastructure for the next era of AI-native Web3.
+                This isn&apos;t just a dev tool. It&apos;s infrastructure for the next era of AI-native Web3.
               </p>
             </div>
 
@@ -544,7 +544,7 @@ export default function Home() {
 
                 <div className="mt-6 p-4 bg-orange-50 rounded-lg">
                   <p className="text-sm text-orange-800 font-medium">
-                    "Turning any Soroban smart contract into an AI-ready MCP server takes just seconds."
+                    &quot;Turning any Soroban smart contract into an AI-ready MCP server takes just seconds.&quot;
                   </p>
                 </div>
               </div>
