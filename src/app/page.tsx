@@ -128,7 +128,7 @@ export default function Home() {
                   </div>
                   <div className="flex-1">
                     <div className="bg-gray-50 rounded-2xl px-5 py-4 shadow-sm border border-gray-100">
-                      <p className="text-gray-800 font-medium">"Send 50 XLM to my mom for her birthday"</p>
+                      <p className="text-gray-800 font-medium">&quot;Send 50 XLM to my mom for her birthday&quot;</p>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">Sarah • Just now</p>
                   </div>
@@ -139,8 +139,7 @@ export default function Home() {
                   <div className="flex-1 text-right">
                     <div className="bg-gradient-to-r from-amber-500 to-yellow-600 text-white rounded-2xl px-5 py-4 shadow-lg inline-block">
                       <p className="text-sm leading-relaxed">
-                        I found "Mom" in your contacts (Maria Rodriguez). I'll prepare a 50 XLM transfer to her account.
-                        Please confirm this transaction with your passkey. 🎂
+                        I found &quot;Mom&quot; in your contacts (Maria Rodriguez). I&apos;ll prepare a 50 XLM transfer to her account.
                       </p>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">Smart Wallet AI • Instant</p>
@@ -161,7 +160,7 @@ export default function Home() {
                   </div>
                   <div className="flex-1">
                     <div className="bg-gray-50 rounded-2xl px-5 py-4 shadow-sm border border-gray-100">
-                      <p className="text-gray-800 font-medium">"Invest 10% of my balance in the highest yield pool"</p>
+                      <p className="text-gray-800 font-medium">&quot;Invest 10% of my balance in the highest yield pool&quot;</p>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">Alex • 2 minutes ago</p>
                   </div>
@@ -173,7 +172,7 @@ export default function Home() {
                     <div className="bg-gradient-to-r from-amber-500 to-yellow-600 text-white rounded-2xl px-5 py-4 shadow-lg inline-block">
                       <p className="text-sm leading-relaxed">
                         Your balance: 1,000 XLM. I found the best yield: Stellar DeFi Pool (12.5% APY).
-                        I'll invest 100 XLM (10%) for you. This matches your risk profile. 📈
+                        I&apos;ll invest 100 XLM (10%) for you. This matches your risk profile. 📈
                       </p>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">Smart Wallet AI • Instant</p>
@@ -194,7 +193,7 @@ export default function Home() {
                   </div>
                   <div className="flex-1">
                     <div className="bg-gray-50 rounded-2xl px-5 py-4 shadow-sm border border-gray-100">
-                      <p className="text-gray-800 font-medium">"Buy that cool space NFT we talked about yesterday"</p>
+                      <p className="text-gray-800 font-medium">&quot;Buy that cool space NFT we talked about yesterday&quot;</p>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">Jamie • 5 minutes ago</p>
                   </div>
@@ -205,8 +204,8 @@ export default function Home() {
                   <div className="flex-1 text-right">
                     <div className="bg-gradient-to-r from-amber-500 to-yellow-600 text-white rounded-2xl px-5 py-4 shadow-lg inline-block">
                       <p className="text-sm leading-relaxed">
-                        Found it! "Cosmic Explorer #42" for 25 XLM on StellarNFT marketplace.
-                        It's still available and within your 30 XLM spending limit. Shall I proceed? 🚀
+                        Found it! &quot;Cosmic Explorer #42&quot; for 25 XLM on StellarNFT marketplace.
+                        It&apos;s still available and within your 30 XLM spending limit. Shall I proceed? 🚀
                       </p>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">Smart Wallet AI • Instant</p>
