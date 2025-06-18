@@ -43,7 +43,7 @@ export const rpc = new Server(env.NEXT_PUBLIC_RPC_URL);
 export const account = new PasskeyKit({
   rpcUrl: "https://soroban-testnet.stellar.org",
   networkPassphrase: "Test SDF Network ; September 2015",
-  walletWasmHash: "a8860280cb9f9335b623f81a4e80e89a7920024275b177f2d4bffa6aa5fb5606",
+  walletWasmHash: env.NEXT_PUBLIC_WALLET_WASM_HASH,
   timeoutInSeconds: 30
 });
 

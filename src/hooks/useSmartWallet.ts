@@ -2,14 +2,11 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { account, fundSigner, native, server, fundPubkey, fundKeypair } from "~/lib/utils";
-import base64url from "base64url";
-import { Address, hash, Keypair, Operation, scValToNative, StrKey, rpc as SorobanRpc, TransactionBuilder, xdr, Transaction } from "@stellar/stellar-sdk";
-import { SignerStore, type SignerLimits, SignerKey } from "passkey-kit";
+import { Address, Keypair, Operation, scValToNative, rpc as SorobanRpc, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
+import { SignerStore } from "passkey-kit";
 import { useSearchParams } from "./useSearchParams";
 import { env } from "~/env";
 import toast from "react-hot-toast";
-import { AssembledTransaction } from "@stellar/stellar-sdk/contract";
-const ADMIN_KEY = "AAAAEAAAAAEAAAABAAAAEQAAAAEAAAAA"; // TODO very rough until we're actually parsing the limits object
 
 export const useSmartWallet = () => {
     const [keyId, setKeyId] = useState<string | null>(null);

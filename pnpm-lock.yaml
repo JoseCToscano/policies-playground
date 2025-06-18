@@ -96,8 +96,8 @@ importers:
         specifier: ^15.0.1
         version: 15.1.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       passkey-kit:
-        specifier: ^0.10.21
-        version: 0.10.21
+        specifier: ^0.10.24
+        version: 0.10.24
       qrcode.react:
         specifier: ^4.2.0
         version: 4.2.0(react@18.3.1)
@@ -1129,6 +1129,10 @@ packages:
 
   '@stellar/stellar-sdk@13.2.0':
     resolution: {integrity: sha512-azxeh1+mS28h96Q+vl41ffytQvWdudRl1KtjYO0TRZb/9u0/lH57oYBeJ+gvcQr+T7s02wTayFdHbKru5V5/XA==}
+    engines: {node: '>=18.0.0'}
+
+  '@stellar/stellar-sdk@13.3.0':
+    resolution: {integrity: sha512-8+GHcZLp+mdin8gSjcgfb/Lb6sSMYRX6Nf/0LcSJxvjLQR0XHpjGzOiRbYb2jSXo51EnA6kAV5j+4Pzh5OUKUg==}
     engines: {node: '>=18.0.0'}
 
   '@stripe/crypto@0.0.4':
@@ -2311,11 +2315,11 @@ packages:
     resolution: {integrity: sha512-GQ2EWRpQV8/o+Aw8YqtfZZPfNRWZYkbidE9k5rpl/hC3vtHHBfGm2Ifi6qWV+coDGkrUKZAxE3Lot5kcsRlh+g==}
     engines: {node: '>=6'}
 
-  passkey-kit-sdk@0.6.7:
-    resolution: {integrity: sha512-4q+pw1bP8bvx71ABcEwpPGld4I3jCDqmDHwHI+DKi6t5YZf+lVMK9WMKE8R/OE8TeKuTz/iH3k9kS4wjw/hzOA==}
+  passkey-kit-sdk@0.6.8:
+    resolution: {integrity: sha512-S7fjTJjxmEa6AohHoadOcfqPzYEt6dncMn+/g0K8Z1PUb8pcxAYQnIQrOz1FENyETGisqXTsh3BpnZE3JTWeHQ==}
 
-  passkey-kit@0.10.21:
-    resolution: {integrity: sha512-Az+qRmHylzc+IXZObnJWFpLLbbY+y7MHfGBvIruaC0kZmJ1QIm6PZQjZIb6Xz8QvozaE99FHznBqh7PCly5FRg==}
+  passkey-kit@0.10.24:
+    resolution: {integrity: sha512-RzCIdqh3SoNjuRXmfI09NjruxtWR2fu/2qSdEV5jucY666L+YfpT7E9iq3xtA78rVki1/8upDsIhjxdhVdH/iA==}
 
   path-exists@4.0.0:
     resolution: {integrity: sha512-ak9Qy5Q7jYb2Wwcey5Fpvg2KoAc/ZIhLSLOSBmRmygPsGwkVVt0fZa0qrtMz+m6tJTAHfZQ8FnmB4MG4LWy7/w==}
@@ -2609,8 +2613,8 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
-  sac-sdk@0.3.7:
-    resolution: {integrity: sha512-T7Q4Vf1zuGvO8VL76v8nharAuPGg02w7AzglgRtgidBh6uImil4yr43kKOlazqZdkVfiZTKPDWSt2UfAfi7LEQ==}
+  sac-sdk@0.3.8:
+    resolution: {integrity: sha512-HuRFCuhqrhtC4SHMOYePFlNeueCnC7C54Da2X7HiOmH6oQ4orWwBH55uYU2yaO0TnxXisnUfqfcdOO39GqVyYg==}
 
   safe-array-concat@1.1.3:
     resolution: {integrity: sha512-AURm5f0jYEOydBj7VQlVvDrjeFgthDdEF5H1dP+6mNpoXOMo1quQqJ4wvJDyRZ9+pO3kGWoOdmV08cSv2aJV6Q==}
@@ -3847,6 +3851,19 @@ snapshots:
       sodium-native: 4.3.3
 
   '@stellar/stellar-sdk@13.2.0':
+    dependencies:
+      '@stellar/stellar-base': 13.1.0
+      axios: 1.8.4
+      bignumber.js: 9.3.0
+      eventsource: 2.0.2
+      feaxios: 0.0.23
+      randombytes: 2.1.0
+      toml: 3.0.0
+      urijs: 1.19.11
+    transitivePeerDependencies:
+      - debug
+
+  '@stellar/stellar-sdk@13.3.0':
     dependencies:
       '@stellar/stellar-base': 13.1.0
       axios: 1.8.4
@@ -5253,21 +5270,21 @@ snapshots:
     dependencies:
       callsites: 3.1.0
 
-  passkey-kit-sdk@0.6.7:
+  passkey-kit-sdk@0.6.8:
     dependencies:
-      '@stellar/stellar-sdk': 13.2.0
+      '@stellar/stellar-sdk': 13.3.0
       buffer: 6.0.3
     transitivePeerDependencies:
       - debug
 
-  passkey-kit@0.10.21:
+  passkey-kit@0.10.24:
     dependencies:
       '@simplewebauthn/browser': 13.1.0
-      '@stellar/stellar-sdk': 13.2.0
+      '@stellar/stellar-sdk': 13.3.0
       base64url: 3.0.1
       buffer: 6.0.3
-      passkey-kit-sdk: 0.6.7
-      sac-sdk: 0.3.7
+      passkey-kit-sdk: 0.6.8
+      sac-sdk: 0.3.8
     transitivePeerDependencies:
       - debug
 
@@ -5497,9 +5514,9 @@ snapshots:
     dependencies:
       queue-microtask: 1.2.3
 
-  sac-sdk@0.3.7:
+  sac-sdk@0.3.8:
     dependencies:
-      '@stellar/stellar-sdk': 13.2.0
+      '@stellar/stellar-sdk': 13.3.0
       buffer: 6.0.3
     transitivePeerDependencies:
       - debug
