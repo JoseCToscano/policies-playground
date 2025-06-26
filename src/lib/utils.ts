@@ -6,8 +6,8 @@ import { env } from "~/env";
 import { StrKey, Keypair, Account, contract } from "@stellar/stellar-sdk/minimal";
 import { basicNodeSigner, Client } from "@stellar/stellar-sdk/minimal/contract";
 import toast from "react-hot-toast";
-import { TRPCClientErrorLike } from "@trpc/client";
-import { AnyClientTypes, TRPCError } from "@trpc/server/unstable-core-do-not-import";
+import { type TRPCClientErrorLike } from "@trpc/client";
+import { type AnyClientTypes, TRPCError } from "@trpc/server/unstable-core-do-not-import";
 import { Address, Asset, Horizon, Networks } from "@stellar/stellar-sdk";
 import { type AxiosError } from "axios";
 
@@ -261,7 +261,7 @@ function parsedTransactionFailedError(
   return message;
 }
 
-export const createSmartContractClient = async (contractAddress: string): Promise<Client> => {
+export const createSmartContractClient = async (contractAddress: string) => {
   if (contractAddress === 'native' || contractAddress === env.NEXT_PUBLIC_NATIVE_CONTRACT_ID) {
     return new SACClient({
       rpcUrl: env.NEXT_PUBLIC_RPC_URL,
