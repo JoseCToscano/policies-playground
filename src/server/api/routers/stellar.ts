@@ -9,8 +9,8 @@ import { Asset, rpc, contract, Address, xdr, Soroban, Transaction, TransactionBu
 import { SAC_FUNCTIONS } from "~/lib/constants/sac";
 import { ContractMetadata, decodeBuffer, getContractMetadata } from "~/lib/getContractMetadat";
 import { env } from "~/env";
-import { addressToScVal, u32ToScVal, u128ToScVal, boolToScVal, numberToU64, numberToI128, stringToSymbol, } from "~/lib/scHelper";
-import { Client } from "@stellar/stellar-sdk/minimal/contract";
+import { addressToScVal, u32ToScVal, u128ToScVal, boolToScVal, numberToU64, numberToI128, stringToSymbol, bytesnToScVal } from "~/lib/scHelper";
+import { type Client } from "@stellar/stellar-sdk/minimal/contract";
 
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
@@ -182,6 +182,11 @@ export const stellarRouter = createTRPCRouter({
                 return stringToSymbol(arg);
               }
               break;
+            case 'bytesn':
+              if (arg) {
+                return bytesnToScVal(arg);
+              }
+              break;
             default:
               if (arg) {
                 return nativeToScVal(arg, { type: param.type });
@@ -198,14 +203,13 @@ export const stellarRouter = createTRPCRouter({
         functionMetadata.parameters.forEach((p, i) => {
           params[p.name] = scValArgs[i] as xdr.ScVal;
         });
+        console.log('params:', params);
         const contractClient = await createSmartContractClient(input.contractAddress);
-
-
-
         const functionToCall = contractClient[method as keyof Client];
         // @ts-ignore 
         const result = await functionToCall(params);
         const txXdr = result.toXDR();
+        console.log('txXdr:', txXdr);
 
         // const sorobanServer = new rpc.Server("https://soroban-testnet.stellar.org");
         // const preparedTx = await sorobanServer.prepareTransaction(TransactionBuilder.fromXDR(txXdr, Networks.TESTNET));

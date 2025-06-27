@@ -35,8 +35,8 @@ import {
     TooltipTrigger,
 } from "~/components/ui/tooltip"
 import { SAC_FUNCTION_DOCS } from "~/lib/constants/sac";
-import { Combobox, ComboboxItem } from "~/components/ui/combobox";
-import { SignerInfo, StoredSigners } from '~/app/home/_components/signers-list';
+import { Combobox, type ComboboxItem } from "~/components/ui/combobox";
+import { type SignerInfo, type StoredSigners } from '~/app/home/_components/signers-list';
 import Image from "next/image";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
 
@@ -433,6 +433,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                 isReadOnly,
                 walletContractId: selectedSigner
             });
+            console.log('response:', response);
             if (!response) {
                 throw new Error("Failed to prepare contract call");
             }
@@ -445,6 +446,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
 
     // Execute contract function call
     const executeContractCall = async () => {
+        console.log('executeContractCall');
         if (!selectedFunction || !contractAddress || !metadata) {
             toast.error("Please select a function and contract first");
             return;
@@ -477,7 +479,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
             if (!xdr) {
                 throw new Error("Failed to create transaction XDR");
             }
-
+            console.log('signerItem:', signerItem);
             const result = await signAndSend(xdr, signerItem.signerType, signerItem.value);
             console.log('result from executeContractCall:', result);
             if (typeof result !== 'undefined' && result !== null) {

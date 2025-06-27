@@ -1,10 +1,30 @@
-import { Address, nativeToScVal, xdr, rpc as SorobanRpc, TransactionBuilder, Keypair } from '@stellar/stellar-sdk';
+import { Address, nativeToScVal, xdr, type rpc as SorobanRpc, TransactionBuilder, Keypair } from '@stellar/stellar-sdk';
 
 /**
  * Convert a string to a Symbol ScVal
  */
 export const stringToSymbol = (val: string) => {
     return nativeToScVal(val, { type: "symbol" });
+};
+
+export const bytesnToScVal = (val: string) => {
+    // Remove any 0x prefix if present  
+    const cleanHex = val.startsWith('0x') ? val.slice(2) : val;
+
+    // Ensure exactly 64 hex characters (32 bytes)  
+    let paddedHex = cleanHex;
+    if (paddedHex.length < 64) {
+        // Pad with leading zeros  
+        paddedHex = paddedHex.padStart(64, '0');
+    } else if (paddedHex.length > 64) {
+        // Truncate or throw error  
+        throw new Error(`Hex string too long: expected 64 characters, got ${paddedHex.length}`);
+    }
+
+    const buffer = Buffer.from(paddedHex, "hex");
+    const scVal = xdr.ScVal.scvBytes(buffer);
+    return scVal;
+    // return nativeToScVal(scVal, { type: "bytesN" });
 };
 
 /**
