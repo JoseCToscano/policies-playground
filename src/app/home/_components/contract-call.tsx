@@ -137,14 +137,14 @@ const popularContracts: PopularContract[] = [
     {
         name: "Contact's list",
         description: "@JoseCToscano's Contact's Smart Contract Demo",
-        address: "CDOCQ4YNWDPWB3HHGQQCVCX5PWJYHWYKYAC2PCE237WWZFQNW2GYXSDA",
+        address: "CCJEOZEVX4V4JCQHN4HTXFDZHM3DABRRDZ5LJBEGWJ7OGJYE6FRL5G34",
         icon: <LucideBookUser className="h-3.5 w-3.5" />,
         githubUrl: 'https://github.com/JoseCToscano/policies-playground'
     },
     {
         name: "Do Math",
         description: "@kalepail's Do Math Demo",
-        address: "CAXZG5WRNRY4ZDG6UPNFAQ2HY77HPETA7YIQDKFK4JENRVH43X2TREW6",
+        address: "CDZ4GYT2I7XCUOESFTHULVMKOTEJAEHCLTF7Y3ZEGWOIIT7VJJ3423EO",
         icon: <LucideDiamondPlus className="h-3.5 w-3.5" />,
         githubUrl: 'https://github.com/kalepail/do-math'
     }
