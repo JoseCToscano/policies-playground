@@ -408,7 +408,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
 
     // Helper to check if a parameter is an address type and should get a default value
     const shouldUseDefaultAddressValue = (paramName: string, paramType: string, isFirstParam: boolean): boolean => {
-        return paramType === 'address' && ['from', 'source', 'user', 'id', 'address', 'owner'].includes(paramName.toLowerCase()) && isFirstParam;
+        return paramType === 'address' && ['from', 'source', 'user', 'id', 'address', 'owner', 'account'].includes(paramName.toLowerCase()) && isFirstParam;
     };
 
     // Create XDR for contract function call
