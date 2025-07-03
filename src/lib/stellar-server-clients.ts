@@ -24,7 +24,6 @@ export function getServerNetworkConfig(network: 'testnet' | 'mainnet'): StellarN
       rpcUrl: env.NEXT_PUBLIC_MAINNET_RPC_URL ?? 'https://mainnet.sorobanrpc.com',
       networkPassphrase: env.NEXT_PUBLIC_MAINNET_NETWORK_PASSPHRASE ?? 'Public Global Stellar Network ; September 2015',
       walletWasmHash: env.NEXT_PUBLIC_MAINNET_WALLET_WASM_HASH ?? '',
-      zafegardWasmHash: env.NEXT_PUBLIC_MAINNET_ZAFEGARD_WASM_HASH ?? '',
       launchtubeUrl: env.NEXT_PUBLIC_MAINNET_LAUNCHTUBE_URL ?? 'https://mainnet.launchtube.xyz',
       launchtubeJwt: env.NEXT_PUBLIC_MAINNET_LAUNCHTUBE_JWT ?? '',
       mercuryUrl: env.NEXT_PUBLIC_MAINNET_MERCURY_URL ?? 'https://api.mercurydata.app',
@@ -35,16 +34,15 @@ export function getServerNetworkConfig(network: 'testnet' | 'mainnet'): StellarN
     };
   } else {
     return {
-      rpcUrl: env.NEXT_PUBLIC_TESTNET_RPC_URL ?? env.NEXT_PUBLIC_RPC_URL ?? 'https://soroban-testnet.stellar.org',
-      networkPassphrase: env.NEXT_PUBLIC_TESTNET_NETWORK_PASSPHRASE ?? env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? 'Test SDF Network ; September 2015',
-      walletWasmHash: env.NEXT_PUBLIC_TESTNET_WALLET_WASM_HASH ?? env.NEXT_PUBLIC_WALLET_WASM_HASH ?? '',
-      zafegardWasmHash: env.NEXT_PUBLIC_TESTNET_ZAFEGARD_WASM_HASH ?? env.NEXT_PUBLIC_ZAFEGARD_WASM_HASH ?? '',
-      launchtubeUrl: env.NEXT_PUBLIC_TESTNET_LAUNCHTUBE_URL ?? env.NEXT_PUBLIC_LAUNCHTUBE_URL ?? 'https://testnet.launchtube.xyz',
-      launchtubeJwt: env.NEXT_PUBLIC_TESTNET_LAUNCHTUBE_JWT ?? env.NEXT_PUBLIC_LAUNCHTUBE_JWT ?? '',
-      mercuryUrl: env.NEXT_PUBLIC_TESTNET_MERCURY_URL ?? env.NEXT_PUBLIC_MERCURY_URL ?? 'https://api.mercurydata.app',
-      mercuryJwt: env.NEXT_PUBLIC_TESTNET_MERCURY_JWT ?? env.NEXT_PUBLIC_MERCURY_JWT ?? '',
-      mercuryProjectName: env.NEXT_PUBLIC_TESTNET_MERCURY_PROJECT_NAME ?? env.NEXT_PUBLIC_MERCURY_PROJECT_NAME ?? 'your-testnet-project',
-      nativeContractId: env.NEXT_PUBLIC_TESTNET_NATIVE_CONTRACT_ID ?? env.NEXT_PUBLIC_NATIVE_CONTRACT_ID ?? TESTNET_XLM_SAC,
+      rpcUrl: env.NEXT_PUBLIC_TESTNET_RPC_URL ?? 'https://soroban-testnet.stellar.org',
+      networkPassphrase: env.NEXT_PUBLIC_TESTNET_NETWORK_PASSPHRASE ?? 'Test SDF Network ; September 2015',
+      walletWasmHash: env.NEXT_PUBLIC_TESTNET_WALLET_WASM_HASH ?? '',
+      launchtubeUrl: env.NEXT_PUBLIC_TESTNET_LAUNCHTUBE_URL ?? 'https://testnet.launchtube.xyz',
+      launchtubeJwt: env.NEXT_PUBLIC_TESTNET_LAUNCHTUBE_JWT ?? '',
+      mercuryUrl: env.NEXT_PUBLIC_TESTNET_MERCURY_URL ?? 'https://api.mercurydata.app',
+      mercuryJwt: env.NEXT_PUBLIC_TESTNET_MERCURY_JWT ?? '',
+      mercuryProjectName: env.NEXT_PUBLIC_TESTNET_MERCURY_PROJECT_NAME ?? 'your-testnet-project',
+      nativeContractId: env.NEXT_PUBLIC_TESTNET_NATIVE_CONTRACT_ID ?? TESTNET_XLM_SAC,
       horizonUrl: env.NEXT_PUBLIC_TESTNET_HORIZON_URL ?? 'https://horizon-testnet.stellar.org',
     };
   }
@@ -55,7 +53,7 @@ export function getServerNetworkConfig(network: 'testnet' | 'mainnet'): StellarN
  */
 export function createServerStellarClients(network: 'testnet' | 'mainnet' = 'testnet') {
   const config = getServerNetworkConfig(network);
-  
+
   // Create RPC client for Soroban interactions
   const rpc = new Server(config.rpcUrl);
 
