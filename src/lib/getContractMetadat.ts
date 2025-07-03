@@ -1,7 +1,7 @@
-import { Asset, contract, Networks, xdr } from "@stellar/stellar-sdk/minimal";
+import { Asset, contract, Networks, type xdr } from "@stellar/stellar-sdk/minimal";
 import { env } from "~/env";
 import { SAC_FUNCTIONS } from "~/lib/constants/sac";
-import { ContractFunction, ContractFunctionParam } from "~/types/contracts";
+import { type ContractFunction, ContractFunctionParam } from "~/types/contracts";
 
 // Modify the ContractMetadata interface to include enums and unions
 export interface ContractMetadata {
@@ -249,20 +249,6 @@ export const decodeBuffer = (buf: Buffer | string): string => {
 };
 
 export async function getContractMetadata(contractAddress: string): Promise<ContractMetadata> {
-    // Check if this is native XLM
-    if (contractAddress === 'native' || contractAddress === env.NEXT_PUBLIC_NATIVE_CONTRACT_ID) {
-        // For native XLM, we use the standard SAC interface
-        const metadata: ContractMetadata = {
-            contractAddress: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
-            name: "Native",
-            symbol: "XLM",
-            decimals: 7,
-            totalSupply: "0",
-            version: "1",
-            functions: SAC_FUNCTIONS
-        };
-        return metadata;
-    }
 
     // Check if this is an Asset Contract
     const isAssetContract = contractAddress.includes('-');

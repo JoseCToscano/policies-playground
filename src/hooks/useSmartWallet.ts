@@ -26,7 +26,7 @@ export const useSmartWallet = () => {
     const server = useStellarServer();
     const native = useStellarNative();
     const { getFundPubkey, getFundSigner, fundKeypair } = useStellarFunding();
-    const { rpcUrl, networkPassphrase, zafegardWasmHash } = useStellarConfig();
+    const { rpcUrl, networkPassphrase } = useStellarConfig();
 
     // Poll for wallet balance every 5 seconds
     useEffect(() => {
@@ -59,64 +59,6 @@ export const useSmartWallet = () => {
     }, [contractId]);
 
 
-    async function initWallet(contractId_: string) {
-        try {
-            const rpc = new SorobanRpc.Server(rpcUrl);
-            const fundPubkey = await getFundPubkey();
-            const source = await rpc.getAccount(fundPubkey);
-            const transaction_before = new TransactionBuilder(source, {
-                fee: "0",
-                networkPassphrase: networkPassphrase
-            })
-                .addOperation(
-                    Operation.createCustomContract({
-                        address: Address.fromString(fundPubkey),
-                        wasmHash: Buffer.from(
-                            zafegardWasmHash,
-                            "hex",
-                        ),
-                        salt: Address.fromString(contractId_).toBuffer(),
-                    }),
-                )
-                .setTimeout(300)
-                .build();
-
-            const sim = await rpc.simulateTransaction(transaction_before);
-
-            if (!SorobanRpc.Api.isSimulationSuccess(sim))
-                throw new Error("Simulation failed");
-
-            const transaction_after = TransactionBuilder.cloneFrom(
-                transaction_before,
-                {
-                    fee: (Number(sim.minResourceFee) + 10_000_000).toString(),
-                    sorobanData: sim.transactionData.build(),
-                },
-            ).build();
-
-            const op = transaction_after
-                .operations[0] as Operation.InvokeHostFunction;
-
-            op.auth![0] = sim.result!.auth[0]!;
-
-            transaction_after.sign(await fundKeypair);
-
-            const res1 = await rpc._sendTransaction(transaction_after);
-
-            if (res1.status !== "PENDING")
-                return toast.error("Transaction send failed");
-
-            await new Promise((resolve) => setTimeout(resolve, 6000));
-
-            const res2 = await rpc.getTransaction(res1.hash);
-
-            if (res2.status !== "SUCCESS") return toast.error("Transaction failed");
-
-            console.log('res2', res2);
-        } catch (error) {
-            console.error('Error initializing wallet:', error);
-        }
-    }
 
 
 
@@ -150,8 +92,9 @@ export const useSmartWallet = () => {
             setContractId(cid);
             setParams({ keyId: keyIdBase64 });
 
-            await initWallet(cid)
-            await fundWallet(cid)
+            if (networkPassphrase === 'Test SDF Network ; September 2015') {
+                await fundWallet(cid)
+            }
             await getWalletSigners()
 
         } catch (error) {

@@ -17,7 +17,6 @@ export interface StellarNetworkConfig {
   rpcUrl: string;
   networkPassphrase: string;
   walletWasmHash: string;
-  zafegardWasmHash: string;
   launchtubeUrl: string;
   launchtubeJwt: string;
   mercuryUrl: string;
@@ -39,30 +38,28 @@ const MAINNET_XLM_SAC = 'CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWM
 
 const NETWORK_CONFIGS: Record<NetworkType, StellarNetworkConfig> = {
   testnet: {
-    rpcUrl: env.NEXT_PUBLIC_TESTNET_RPC_URL ?? env.NEXT_PUBLIC_RPC_URL ?? 'https://soroban-testnet.stellar.org',
-    networkPassphrase: env.NEXT_PUBLIC_TESTNET_NETWORK_PASSPHRASE ?? env.NEXT_PUBLIC_NETWORK_PASSPHRASE ?? 'Test SDF Network ; September 2015',
-    walletWasmHash: env.NEXT_PUBLIC_TESTNET_WALLET_WASM_HASH ?? env.NEXT_PUBLIC_WALLET_WASM_HASH ?? '',
-    zafegardWasmHash: env.NEXT_PUBLIC_TESTNET_ZAFEGARD_WASM_HASH ?? env.NEXT_PUBLIC_ZAFEGARD_WASM_HASH ?? '',
-    launchtubeUrl: env.NEXT_PUBLIC_TESTNET_LAUNCHTUBE_URL ?? env.NEXT_PUBLIC_LAUNCHTUBE_URL ?? 'https://testnet.launchtube.xyz',
-    launchtubeJwt: env.NEXT_PUBLIC_TESTNET_LAUNCHTUBE_JWT ?? env.NEXT_PUBLIC_LAUNCHTUBE_JWT ?? '',
-    mercuryUrl: env.NEXT_PUBLIC_TESTNET_MERCURY_URL ?? env.NEXT_PUBLIC_MERCURY_URL ?? 'https://api.mercurydata.app',
-    mercuryJwt: env.NEXT_PUBLIC_TESTNET_MERCURY_JWT ?? env.NEXT_PUBLIC_MERCURY_JWT ?? '',
-    mercuryProjectName: env.NEXT_PUBLIC_TESTNET_MERCURY_PROJECT_NAME ?? env.NEXT_PUBLIC_MERCURY_PROJECT_NAME ?? 'your-testnet-project',
-    nativeContractId: env.NEXT_PUBLIC_TESTNET_NATIVE_CONTRACT_ID ?? env.NEXT_PUBLIC_NATIVE_CONTRACT_ID ?? TESTNET_XLM_SAC,
-    horizonUrl: env.NEXT_PUBLIC_TESTNET_HORIZON_URL ?? 'https://horizon-testnet.stellar.org',
+    rpcUrl: env.NEXT_PUBLIC_TESTNET_RPC_URL,
+    networkPassphrase: env.NEXT_PUBLIC_TESTNET_NETWORK_PASSPHRASE,
+    walletWasmHash: env.NEXT_PUBLIC_TESTNET_WALLET_WASM_HASH,
+    launchtubeUrl: env.NEXT_PUBLIC_TESTNET_LAUNCHTUBE_URL,
+    launchtubeJwt: env.NEXT_PUBLIC_TESTNET_LAUNCHTUBE_JWT,
+    mercuryUrl: env.NEXT_PUBLIC_TESTNET_MERCURY_URL,
+    mercuryJwt: env.NEXT_PUBLIC_TESTNET_MERCURY_JWT,
+    mercuryProjectName: env.NEXT_PUBLIC_TESTNET_MERCURY_PROJECT_NAME,
+    nativeContractId: env.NEXT_PUBLIC_TESTNET_NATIVE_CONTRACT_ID,
+    horizonUrl: env.NEXT_PUBLIC_TESTNET_HORIZON_URL,
   },
   mainnet: {
-    rpcUrl: env.NEXT_PUBLIC_MAINNET_RPC_URL ?? 'https://mainnet.sorobanrpc.com',
-    networkPassphrase: env.NEXT_PUBLIC_MAINNET_NETWORK_PASSPHRASE ?? 'Public Global Stellar Network ; September 2015',
-    walletWasmHash: env.NEXT_PUBLIC_MAINNET_WALLET_WASM_HASH ?? '',
-    zafegardWasmHash: env.NEXT_PUBLIC_MAINNET_ZAFEGARD_WASM_HASH ?? '',
-    launchtubeUrl: env.NEXT_PUBLIC_MAINNET_LAUNCHTUBE_URL ?? 'https://mainnet.launchtube.xyz',
-    launchtubeJwt: env.NEXT_PUBLIC_MAINNET_LAUNCHTUBE_JWT ?? '',
-    mercuryUrl: env.NEXT_PUBLIC_MAINNET_MERCURY_URL ?? 'https://api.mercurydata.app',
-    mercuryJwt: env.NEXT_PUBLIC_MAINNET_MERCURY_JWT ?? '',
-    mercuryProjectName: env.NEXT_PUBLIC_MAINNET_MERCURY_PROJECT_NAME ?? '',
-    nativeContractId: env.NEXT_PUBLIC_MAINNET_NATIVE_CONTRACT_ID ?? MAINNET_XLM_SAC,
-    horizonUrl: env.NEXT_PUBLIC_MAINNET_HORIZON_URL ?? 'https://horizon.stellar.org',
+    rpcUrl: env.NEXT_PUBLIC_MAINNET_RPC_URL,
+    networkPassphrase: env.NEXT_PUBLIC_MAINNET_NETWORK_PASSPHRASE,
+    walletWasmHash: env.NEXT_PUBLIC_MAINNET_WALLET_WASM_HASH,
+    launchtubeUrl: env.NEXT_PUBLIC_MAINNET_LAUNCHTUBE_URL,
+    launchtubeJwt: env.NEXT_PUBLIC_MAINNET_LAUNCHTUBE_JWT,
+    mercuryUrl: env.NEXT_PUBLIC_MAINNET_MERCURY_URL,
+    mercuryJwt: env.NEXT_PUBLIC_MAINNET_MERCURY_JWT,
+    mercuryProjectName: env.NEXT_PUBLIC_MAINNET_MERCURY_PROJECT_NAME,
+    nativeContractId: env.NEXT_PUBLIC_MAINNET_NATIVE_CONTRACT_ID,
+    horizonUrl: env.NEXT_PUBLIC_MAINNET_HORIZON_URL,
   },
 };
 

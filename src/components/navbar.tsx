@@ -122,7 +122,7 @@ const Navbar = () => {
                             </div>
                         </div>
                         <div className="hidden md:flex items-center space-x-4">
-                            <NetworkSwitcher variant="compact" size="sm" />
+                            <NetworkSwitcher />
                             <Link
                                 href="/home"
                                 className="text-gray-600 hover:text-gray-900 text-sm transition-colors duration-300"
@@ -155,7 +155,7 @@ const Navbar = () => {
             >
                 <div className="px-2 pt-2 pb-3 space-y-1">
                     <div className="px-3 py-2">
-                        <NetworkSwitcher variant="pills" size="sm" />
+                        <NetworkSwitcher />
                     </div>
                     <Link
                         href="#mcp-generator"
