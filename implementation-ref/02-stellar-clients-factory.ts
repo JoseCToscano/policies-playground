@@ -16,7 +16,6 @@ import type { StellarNetworkConfig } from './01-stellar-context';
 import { Account, Keypair, StrKey } from '@stellar/stellar-sdk/minimal';
 import { basicNodeSigner } from '@stellar/stellar-sdk/minimal/contract';
 import { Server } from '@stellar/stellar-sdk/minimal/rpc';
-import { noop } from '@tanstack/react-table'; // or use a no-op function
 import { PasskeyKit, PasskeyServer, SACClient } from 'passkey-kit';
 
 /**
@@ -73,7 +72,9 @@ export const createStellarClients = (config: StellarNetworkConfig) => {
     // Try to fund the keypair if it doesn't exist
     rpc.getAccount(publicKey)
       .catch(() => rpc.requestAirdrop(publicKey))
-      .catch(noop); // Ignore airdrop failures
+      .catch(() => {
+        console.log('Airdrop failed');
+      }); // Ignore airdrop failures
 
     return keypair;
   };
@@ -89,7 +90,7 @@ export const createStellarClients = (config: StellarNetworkConfig) => {
 
   // Get SAC client for native XLM operations
   const native = sac.getSACClient(config.nativeContractId);
-  
+
   // Get SAC client for main balance token (could be USDC, XLM, or other)
   const mainBalance = sac.getSACClient(config.mainBalance);
 
@@ -98,16 +99,16 @@ export const createStellarClients = (config: StellarNetworkConfig) => {
     rpc,
     account,
     server,
-    
+
     // Utilities
     mockPubkey,
     mockSource,
-    
+
     // Funding utilities (testnet only)
     fundKeypair,
     getFundPubkey,
     getFundSigner,
-    
+
     // Token clients
     native,
     mainBalance,
