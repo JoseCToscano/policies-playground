@@ -39,6 +39,7 @@ import { Combobox, type ComboboxItem } from "~/components/ui/combobox";
 import { type SignerInfo, type StoredSigners } from '~/app/home/_components/signers-list';
 import Image from "next/image";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
+import { useStellarConfig } from "~/hooks/use-stellar-clients";
 
 interface PopularContract {
     name: string;
@@ -167,6 +168,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
     const [localSigners, setLocalSigners] = useState<SignerInfo[]>([]);
     const { signXDR, signAndSend, signers: walletSigners } = useSmartWallet();
     const [isPopularContractsOpen, setIsPopularContractsOpen] = useState(true);
+    const { network } = useStellarConfig();
 
     // Load signers from localStorage
     useEffect(() => {
@@ -262,7 +264,7 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
     };
 
     const { data: contractMetadata, isLoading: isLoadingMetadata, error: metadataError, refetch: refetchMetadata } = api.stellar.getContractMetadata.useQuery(
-        { contractAddress },
+        { contractAddress, network: network === 'testnet' ? 'testnet' : 'mainnet' },
         {
             enabled: contractAddress.length > 0,
             retry: false // Don't automatically retry on error

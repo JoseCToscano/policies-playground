@@ -69,11 +69,12 @@ export const useStellarFunding = () => {
  */
 export const useStellarConfig = () => {
   const { config, network } = useStellar();
-  
+
   return {
     ...config,
     isTestnet: network === 'testnet',
     isMainnet: network === 'mainnet',
+    network
   };
 };
 

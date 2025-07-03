@@ -248,7 +248,7 @@ export const decodeBuffer = (buf: Buffer | string): string => {
     return String(buf);
 };
 
-export async function getContractMetadata(contractAddress: string): Promise<ContractMetadata> {
+export async function getContractMetadata(contractAddress: string, network: 'testnet' | 'mainnet'): Promise<ContractMetadata> {
 
     // Check if this is an Asset Contract
     const isAssetContract = contractAddress.includes('-');
@@ -259,7 +259,7 @@ export async function getContractMetadata(contractAddress: string): Promise<Cont
             throw new Error("Invalid Asset Contract address format");
         }
         const asset = new Asset(code, issuer);
-        const contractId = await asset.contractId(Networks.TESTNET);
+        const contractId = await asset.contractId(network === 'testnet' ? Networks.TESTNET : Networks.PUBLIC);
         console.log('contractId for asset contract:', contractAddress, contractId);
         // For Asset Contracts, we use the standard interface
         const metadata: ContractMetadata = {
@@ -277,8 +277,8 @@ export async function getContractMetadata(contractAddress: string): Promise<Cont
     // If not an Asset Contract, proceed with normal contract metadata fetching
     const contractClient = await contract.Client.from({
         contractId: contractAddress,
-        networkPassphrase: 'Test SDF Network ; September 2015',
-        rpcUrl: 'https://soroban-testnet.stellar.org'
+        networkPassphrase: network === 'testnet' ? env.NEXT_PUBLIC_TESTNET_NETWORK_PASSPHRASE : env.NEXT_PUBLIC_MAINNET_NETWORK_PASSPHRASE,
+        rpcUrl: network === 'testnet' ? env.NEXT_PUBLIC_TESTNET_RPC_URL : env.NEXT_PUBLIC_MAINNET_RPC_URL
     }).catch((e) => {
         console.error("Error fetching contract metadata:", e);
         throw new Error("Failed to fetch contract metadata");

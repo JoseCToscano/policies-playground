@@ -42,7 +42,7 @@ export const stellarRouter = createTRPCRouter({
       return token;
     }),
   submitXDR: publicProcedure
-    .input(z.object({ 
+    .input(z.object({
       xdr: z.string(),
       network: z.enum(['testnet', 'mainnet']).optional().default('testnet')
     }))
@@ -52,11 +52,11 @@ export const stellarRouter = createTRPCRouter({
 
         const { rpc, server } = createServerStellarClients(input.network);
         const stellarNetwork = getStellarNetwork(input.network);
-        
+
         // Simulate transaction
         const sim = await rpc.simulateTransaction(TransactionBuilder.fromXDR(input.xdr, stellarNetwork));
         console.log('sim:', sim);
-        
+
         const result = (await server.send(input.xdr)) as never;
         return {
           success: true,
@@ -70,6 +70,7 @@ export const stellarRouter = createTRPCRouter({
   getContractMetadata: publicProcedure
     .input(z.object({
       contractAddress: z.string(),
+      network: z.enum(['testnet', 'mainnet']).optional().default('testnet')
     }))
     .query(async ({ input }) => {
       try {
@@ -77,7 +78,7 @@ export const stellarRouter = createTRPCRouter({
 
 
 
-        const wasmContractMetadata = await getContractMetadata(input.contractAddress);
+        const wasmContractMetadata = await getContractMetadata(input.contractAddress, input.network);
         return wasmContractMetadata;
       } catch (e) {
         console.error("Error fetching contract metadata:", e);
@@ -85,13 +86,13 @@ export const stellarRouter = createTRPCRouter({
       }
     }),
   getContractBalance: publicProcedure
-    .input(z.object({ 
+    .input(z.object({
       contractAddress: z.string(),
       network: z.enum(['testnet', 'mainnet']).optional().default('testnet')
     }))
     .query(async ({ input }) => {
       console.log('input to getContractBalance:', input.contractAddress, 'network:', input.network);
-      
+
       const { rpc, config } = createServerStellarClients(input.network);
       const indexedSAC = getNetworkAssets(input.network);
 
@@ -135,7 +136,7 @@ export const stellarRouter = createTRPCRouter({
         const args = input.args;
 
         // Map the args to ScVal
-        const { functions, contractAddress } = await getContractMetadata(input.contractAddress);
+        const { functions, contractAddress } = await getContractMetadata(input.contractAddress, input.network);
         console.log('functions:', functions);
         const fn = functions.find(f => f.name === method);
         if (!fn) {
