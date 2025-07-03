@@ -433,7 +433,8 @@ export const ContractCall = ({ signer, mainWalletId, signers: externalSigners }:
                 method: fn,
                 args: scValParams,
                 isReadOnly,
-                walletContractId: selectedSigner
+                walletContractId: selectedSigner,
+                network: network === 'testnet' ? 'testnet' : 'mainnet'
             });
             console.log('response:', response);
             if (!response) {
