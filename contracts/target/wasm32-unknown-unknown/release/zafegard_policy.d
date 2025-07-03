@@ -1,1 +1,0 @@
-/Users/josetoscano/Projects/policies-playground/contracts/target/wasm32-unknown-unknown/release/zafegard_policy.wasm: /Users/josetoscano/Projects/policies-playground/contracts/zafegard-policy/src/lib.rs /Users/josetoscano/Projects/policies-playground/contracts/zafegard-policy/src/test.rs /Users/josetoscano/Projects/policies-playground/contracts/zafegard-policy/src/types.rs

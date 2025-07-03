@@ -1,11 +1,10 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react";
-import { account, fundSigner, native, server, fundPubkey, fundKeypair } from "~/lib/utils";
 import { Address, Keypair, Operation, scValToNative, rpc as SorobanRpc, TransactionBuilder, xdr } from "@stellar/stellar-sdk";
 import { SignerStore } from "passkey-kit";
 import { useSearchParams } from "./useSearchParams";
-import { env } from "~/env";
+import { useStellarAccount, useStellarServer, useStellarNative, useStellarFunding, useStellarConfig } from "./use-stellar-clients";
 import toast from "react-hot-toast";
 
 export const useSmartWallet = () => {
@@ -21,6 +20,13 @@ export const useSmartWallet = () => {
     const [isConnecting, setIsConnecting] = useState<boolean>(false);
 
     const { getParam, setParams } = useSearchParams();
+
+    // Use network-aware hooks
+    const account = useStellarAccount();
+    const server = useStellarServer();
+    const native = useStellarNative();
+    const { getFundPubkey, getFundSigner, fundKeypair } = useStellarFunding();
+    const { rpcUrl, networkPassphrase, zafegardWasmHash } = useStellarConfig();
 
     // Poll for wallet balance every 5 seconds
     useEffect(() => {
@@ -55,17 +61,18 @@ export const useSmartWallet = () => {
 
     async function initWallet(contractId_: string) {
         try {
-            const rpc = new SorobanRpc.Server(env.NEXT_PUBLIC_RPC_URL);
+            const rpc = new SorobanRpc.Server(rpcUrl);
+            const fundPubkey = await getFundPubkey();
             const source = await rpc.getAccount(fundPubkey);
             const transaction_before = new TransactionBuilder(source, {
                 fee: "0",
-                networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE
+                networkPassphrase: networkPassphrase
             })
                 .addOperation(
                     Operation.createCustomContract({
                         address: Address.fromString(fundPubkey),
                         wasmHash: Buffer.from(
-                            env.NEXT_PUBLIC_ZAFEGARD_WASM_HASH,
+                            zafegardWasmHash,
                             "hex",
                         ),
                         salt: Address.fromString(contractId_).toBuffer(),
@@ -199,6 +206,9 @@ export const useSmartWallet = () => {
         console.log('funding wallet', id);
         setIsFunding(true);
         try {
+            const fundPubkey = await getFundPubkey();
+            const fundSigner = await getFundSigner();
+
             const { built, ...transfer } = await native.transfer({
                 to: id,
                 from: fundPubkey,
@@ -281,6 +291,7 @@ export const useSmartWallet = () => {
     async function transfer({ keypair, to, amount, keyId }: { keyId?: string | null, keypair?: Keypair, to: string, amount: number }) {
         if (!contractId) return;
 
+        const fundPubkey = await getFundPubkey();
         const at = await native.transfer({
             from: contractId,
             to: fundPubkey,
@@ -349,6 +360,7 @@ export const useSmartWallet = () => {
                 throw error;
             }
         } else if (signerType === 'Secp256r1') {
+            console.log('Signing from signXDR:', xdrString, signerType, keyId);
             if (!keyId) throw new Error('No public key found');
             return account.sign(xdrString, { keyId });
         } else {

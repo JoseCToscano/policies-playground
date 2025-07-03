@@ -46,3 +46,12 @@ yarn-error.log*
 .idea
 
 docs/
+
+
+# Rust compiled files
+contracts/target/
+**/*.rs.bk
+*.pdb
+.rustc_info.json
+
+implementation-ref

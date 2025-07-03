@@ -5,6 +5,7 @@ import { type Metadata } from "next";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import ToasterProvider from "~/providers/toaster-provider";
+import { StellarProvider } from "~/contexts/stellar-context";
 
 export const metadata: Metadata = {
   title: "Passkey Wallet Sandbox",
@@ -18,12 +19,14 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable}`}>
       <body className="min-h-screen flex flex-col">
-        <TRPCReactProvider>
-          <main className="flex-1">
-            <ToasterProvider />
-            {children}
-          </main>
-        </TRPCReactProvider>
+        <StellarProvider defaultNetwork="testnet">
+          <TRPCReactProvider>
+            <main className="flex-1">
+              <ToasterProvider />
+              {children}
+            </main>
+          </TRPCReactProvider>
+        </StellarProvider>
       </body>
     </html>
   );

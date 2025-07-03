@@ -137,7 +137,7 @@ const popularContracts: PopularContract[] = [
     {
         name: "Contact's list",
         description: "@JoseCToscano's Contact's Smart Contract Demo",
-        address: "CCJEOZEVX4V4JCQHN4HTXFDZHM3DABRRDZ5LJBEGWJ7OGJYE6FRL5G34",
+        address: "CBPKB6AVQC7FZ2CJIVGCTEXLKXSQB55IIENKNG4SNQ2F3QWIRFOG77YO",
         icon: <LucideBookUser className="h-3.5 w-3.5" />,
         githubUrl: 'https://github.com/JoseCToscano/policies-playground'
     },

@@ -21,11 +21,14 @@ import { SignerInfo, SignersList, StoredSigners } from '~/app/home/_components/s
 import { Policy, PoliciesVault } from '~/app/home/_components/policies-vault'
 import { Badge } from "~/components/ui/badge"
 import { LoadingDots } from '~/components/ui/loading-dots'
+import { NetworkSwitcher } from '~/components/network-switcher'
+import { useStellar } from '~/contexts/stellar-context'
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
 function HomeContent() {
   const { create, connect, getWalletSigners, fundWallet, keyId, balance, contractId, addSigner_Ed25519, loading, isFunding, getWalletBalance, attachPolicy, isCreating } = useSmartWallet();
+  const { network } = useStellar();
 
   const [isAttachingPolicy, setIsAttachingPolicy] = useState(false);
 
@@ -127,6 +130,10 @@ function HomeContent() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <div className="mx-auto px-12 py-6 pb-24">
+        {/* Network Switcher */}
+        <div className="mb-6 flex justify-end">
+          <NetworkSwitcher />
+        </div>
         <div className="mt-6 grid gap-6 md:grid-cols-[320px_1fr]">
           {/* Left Section - Dashboard Sidebar */}
           <div className="flex flex-col space-y-4">
@@ -161,17 +168,19 @@ function HomeContent() {
                   <>
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-xs font-medium text-gray-500">Total Balance</h3>
-                      <button
-                        onClick={() => { fundWallet(contractId) }}
-                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                      >
-                        {isFunding ? (
-                          <span className="flex items-center">
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            Funding...
-                          </span>
-                        ) : "Fund wallet"}
-                      </button>
+                      {network === 'testnet' && (
+                        <button
+                          onClick={() => { fundWallet(contractId) }}
+                          className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                        >
+                          {isFunding ? (
+                            <span className="flex items-center">
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              Funding...
+                            </span>
+                          ) : "Fund wallet"}
+                        </button>
+                      )}
                     </div>
 
                     <div className="space-y-2 mb-4">

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+import { NetworkSwitcher } from './network-switcher';
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -121,6 +122,7 @@ const Navbar = () => {
                             </div>
                         </div>
                         <div className="hidden md:flex items-center space-x-4">
+                            <NetworkSwitcher variant="compact" size="sm" />
                             <Link
                                 href="/home"
                                 className="text-gray-600 hover:text-gray-900 text-sm transition-colors duration-300"
@@ -152,6 +154,9 @@ const Navbar = () => {
                     }`}
             >
                 <div className="px-2 pt-2 pb-3 space-y-1">
+                    <div className="px-3 py-2">
+                        <NetworkSwitcher variant="pills" size="sm" />
+                    </div>
                     <Link
                         href="#mcp-generator"
                         className="text-gray-600 hover:text-gray-900 block px-3 py-2 text-base transition-colors duration-300"

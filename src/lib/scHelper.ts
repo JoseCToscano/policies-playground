@@ -197,7 +197,7 @@ export async function submitTransaction(
  * Used to prefill address fields in UI forms
  */
 export function getDefaultAddressValue(paramName: string): string | undefined {
-    const addressParamNames = ['from', 'source', 'user'];
+    const addressParamNames = ['from', 'source', 'user', 'sponsor'];
 
     // If parameter name matches one of the address parameter names
     if (addressParamNames.includes(paramName.toLowerCase())) {

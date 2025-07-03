@@ -3,17 +3,14 @@ import { publicProcedure } from "~/server/api/trpc";
 import { z } from "zod";
 import { Sep10 } from "~/server/services/Sep10";
 import { createSmartContractClient, handleHorizonServerError } from "~/lib/utils";
-import { account, server } from "~/lib/utils";
-import { Asset, rpc, contract, Address, xdr, Soroban, Transaction, TransactionBuilder, Networks, nativeToScVal, scValToNative, Contract, Account } from "@stellar/stellar-sdk";
+import { Asset, contract, Address, xdr, Soroban, Transaction, TransactionBuilder, Networks, nativeToScVal, scValToNative, Contract, Account } from "@stellar/stellar-sdk";
+import { createServerStellarClients, getStellarNetwork, getNetworkAssets } from "~/lib/stellar-server-clients";
 
 import { SAC_FUNCTIONS } from "~/lib/constants/sac";
 import { ContractMetadata, decodeBuffer, getContractMetadata } from "~/lib/getContractMetadat";
 import { env } from "~/env";
 import { addressToScVal, u32ToScVal, u128ToScVal, boolToScVal, numberToU64, numberToI128, stringToSymbol, bytesnToScVal } from "~/lib/scHelper";
 import { type Client } from "@stellar/stellar-sdk/minimal/contract";
-
-const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
-const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
 
 
@@ -45,15 +42,21 @@ export const stellarRouter = createTRPCRouter({
       return token;
     }),
   submitXDR: publicProcedure
-    .input(z.object({ xdr: z.string() }))
+    .input(z.object({ 
+      xdr: z.string(),
+      network: z.enum(['testnet', 'mainnet']).optional().default('testnet')
+    }))
     .mutation(async ({ input }) => {
       try {
-        console.log('input to submitXDR:', input.xdr);
+        console.log('input to submitXDR:', input.xdr, 'network:', input.network);
 
-        // SImulate
-        const sorobanServer = new rpc.Server("https://soroban-testnet.stellar.org");
-        const sim = await sorobanServer.simulateTransaction(TransactionBuilder.fromXDR(input.xdr, Networks.TESTNET));
+        const { rpc, server } = createServerStellarClients(input.network);
+        const stellarNetwork = getStellarNetwork(input.network);
+        
+        // Simulate transaction
+        const sim = await rpc.simulateTransaction(TransactionBuilder.fromXDR(input.xdr, stellarNetwork));
         console.log('sim:', sim);
+        
         const result = (await server.send(input.xdr)) as never;
         return {
           success: true,
@@ -82,18 +85,18 @@ export const stellarRouter = createTRPCRouter({
       }
     }),
   getContractBalance: publicProcedure
-    .input(z.object({ contractAddress: z.string() }))
+    .input(z.object({ 
+      contractAddress: z.string(),
+      network: z.enum(['testnet', 'mainnet']).optional().default('testnet')
+    }))
     .query(async ({ input }) => {
-      console.log('input to getContractBalance:', input.contractAddress);
-      const sorobanServer = new rpc.Server("https://soroban-testnet.stellar.org");
-      const passphrase = "Test SDF Network ; September 2015";
-      const indexedSAC = [
-        new Asset("USDC", "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"),
-        new Asset("EURC", "GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO")
-      ];
+      console.log('input to getContractBalance:', input.contractAddress, 'network:', input.network);
+      
+      const { rpc, config } = createServerStellarClients(input.network);
+      const indexedSAC = getNetworkAssets(input.network);
 
       const balancePromises = indexedSAC.map(async sac => {
-        const balance = await sorobanServer.getSACBalance(input.contractAddress, sac, passphrase);
+        const balance = await rpc.getSACBalance(input.contractAddress, sac, config.networkPassphrase);
         return {
           key: `${sac.code}-${sac.issuer}`,
           balance: balance?.balanceEntry?.amount || "0"
@@ -111,6 +114,7 @@ export const stellarRouter = createTRPCRouter({
         args: z.array(z.any()),
         isReadOnly: z.boolean().optional(),
         walletContractId: z.string(),
+        network: z.enum(['testnet', 'mainnet']).optional().default('testnet'),
       }),
     )
     .mutation(async ({ input }) => {
@@ -119,8 +123,11 @@ export const stellarRouter = createTRPCRouter({
           contractAddress: input.contractAddress,
           method: input.method,
           argsCount: input.args.length,
-          isReadOnly: input.isReadOnly
+          isReadOnly: input.isReadOnly,
+          network: input.network
         });
+
+        const { config } = createServerStellarClients(input.network);
 
 
         // For regular smart contracts
@@ -204,7 +211,7 @@ export const stellarRouter = createTRPCRouter({
           params[p.name] = scValArgs[i] as xdr.ScVal;
         });
         console.log('params:', params);
-        const contractClient = await createSmartContractClient(input.contractAddress);
+        const contractClient = await createSmartContractClient(input.contractAddress, config);
         const functionToCall = contractClient[method as keyof Client];
         // @ts-ignore 
         const result = await functionToCall(params);
@@ -274,6 +281,7 @@ export const stellarRouter = createTRPCRouter({
         contractAddress: z.string(),
         method: z.string(),
         args: z.record(z.string(), z.any()).optional(),
+        network: z.enum(['testnet', 'mainnet']).optional().default('testnet'),
       }),
     )
     .mutation(async ({ input }) => {
@@ -300,12 +308,12 @@ export const stellarRouter = createTRPCRouter({
         }
 
         // For regular contracts, invoke the contract method
-        const sorobanServer = new rpc.Server("https://soroban-testnet.stellar.org");
-        const networkPassphrase = Networks.TESTNET;
+        const { rpc, config } = createServerStellarClients(input.network);
+        const stellarNetwork = getStellarNetwork(input.network);
         const contractClient = await contract.Client.from({
           contractId: input.contractAddress,
-          networkPassphrase,
-          rpcUrl: 'https://soroban-testnet.stellar.org'
+          networkPassphrase: config.networkPassphrase,
+          rpcUrl: config.rpcUrl
         });
 
         // Convert the args object to an array of scvs in the order defined by the function

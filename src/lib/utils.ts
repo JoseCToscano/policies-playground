@@ -1,15 +1,14 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { PasskeyKit, SACClient, PasskeyServer } from "passkey-kit";
-import { Server } from "@stellar/stellar-sdk/minimal/rpc";
-import { env } from "~/env";
-import { StrKey, Keypair, Account, contract } from "@stellar/stellar-sdk/minimal";
-import { basicNodeSigner, Client } from "@stellar/stellar-sdk/minimal/contract";
+import { SACClient } from "passkey-kit";
+import { contract } from "@stellar/stellar-sdk/minimal";
+import { Client } from "@stellar/stellar-sdk/minimal/contract";
 import toast from "react-hot-toast";
 import { type TRPCClientErrorLike } from "@trpc/client";
 import { type AnyClientTypes, TRPCError } from "@trpc/server/unstable-core-do-not-import";
-import { Address, Asset, Horizon, Networks } from "@stellar/stellar-sdk";
+import { Asset, Horizon, Networks } from "@stellar/stellar-sdk";
 import { type AxiosError } from "axios";
+import type { StellarNetworkConfig } from "~/contexts/stellar-context";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -38,52 +37,7 @@ export function shortAddress(address?: string | null) {
   return address.slice(0, 4) + '...' + address.slice(-4);
 }
 
-export const rpc = new Server(env.NEXT_PUBLIC_RPC_URL);
-
-export const account = new PasskeyKit({
-  rpcUrl: "https://soroban-testnet.stellar.org",
-  networkPassphrase: "Test SDF Network ; September 2015",
-  walletWasmHash: env.NEXT_PUBLIC_WALLET_WASM_HASH,
-  timeoutInSeconds: 30
-});
-
-export const server = new PasskeyServer({
-  rpcUrl: env.NEXT_PUBLIC_RPC_URL,
-  launchtubeUrl: env.NEXT_PUBLIC_LAUNCHTUBE_URL,
-  launchtubeJwt: env.NEXT_PUBLIC_LAUNCHTUBE_JWT,
-  mercuryProjectName: env.NEXT_PUBLIC_MERCURY_PROJECT_NAME,
-  mercuryUrl: env.NEXT_PUBLIC_MERCURY_URL,
-  mercuryJwt: env.NEXT_PUBLIC_MERCURY_JWT,
-});
-
-export const mockPubkey = StrKey.encodeEd25519PublicKey(Buffer.alloc(32))
-export const mockSource = new Account(mockPubkey, '0')
-
-export const fundKeypair = new Promise<Keypair>(async (resolve) => {
-  const now = new Date();
-
-  now.setMinutes(0, 0, 0);
-
-  const nowData = new TextEncoder().encode(now.getTime().toString());
-  const hashBuffer = await crypto.subtle.digest('SHA-256', nowData);
-  const keypair = Keypair.fromRawEd25519Seed(Buffer.from(hashBuffer))
-  const publicKey = keypair.publicKey()
-
-  rpc.getAccount(publicKey)
-    .catch(() => rpc.requestAirdrop(publicKey))
-    .catch(() => { })
-
-  resolve(keypair)
-})
-export const fundPubkey = (await fundKeypair).publicKey()
-export const fundSigner = basicNodeSigner(await fundKeypair, env.NEXT_PUBLIC_NETWORK_PASSPHRASE)
-
-
-export const sac = new SACClient({
-  rpcUrl: env.NEXT_PUBLIC_RPC_URL,
-  networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
-});
-export const native = sac.getSACClient(env.NEXT_PUBLIC_NATIVE_CONTRACT_ID)
+// Static clients removed - use network-aware hooks from ~/hooks/use-stellar-clients.ts instead
 
 export function ClientTRPCErrorHandler<T extends AnyClientTypes>(
   x?: TRPCClientErrorLike<T>,
@@ -261,35 +215,37 @@ function parsedTransactionFailedError(
   return message;
 }
 
-export const createSmartContractClient = async (contractAddress: string) => {
-  if (contractAddress === 'native' || contractAddress === env.NEXT_PUBLIC_NATIVE_CONTRACT_ID) {
+export const createSmartContractClient = async (contractAddress: string, config: StellarNetworkConfig) => {
+  if (contractAddress === 'native' || contractAddress === config.nativeContractId) {
     return new SACClient({
-      rpcUrl: env.NEXT_PUBLIC_RPC_URL,
-      networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
-    }).getSACClient(env.NEXT_PUBLIC_NATIVE_CONTRACT_ID);
+      rpcUrl: config.rpcUrl,
+      networkPassphrase: config.networkPassphrase,
+    }).getSACClient(config.nativeContractId);
   } else if (contractAddress.includes('-')) {
     const [code, issuer] = contractAddress.split('-');
     if (!code || !issuer) {
       throw new Error("Invalid Asset Contract address format");
     }
     const asset = new Asset(code, issuer);
-    const contractId = await asset.contractId(Networks.TESTNET);
+    // Determine network based on networkPassphrase
+    const network = config.networkPassphrase.includes('Test') ? Networks.TESTNET : Networks.PUBLIC;
+    const contractId = await asset.contractId(network);
     return new SACClient({
-      rpcUrl: env.NEXT_PUBLIC_RPC_URL,
-      networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
+      rpcUrl: config.rpcUrl,
+      networkPassphrase: config.networkPassphrase,
     }).getSACClient(contractId);
   }
 
   const contractClient = await contract.Client.from({
     contractId: contractAddress,
-    networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
-    rpcUrl: env.NEXT_PUBLIC_RPC_URL,
+    networkPassphrase: config.networkPassphrase,
+    rpcUrl: config.rpcUrl,
   })
 
   return new Client(contractClient.spec, {
     contractId: contractAddress,
-    networkPassphrase: env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
-    rpcUrl: env.NEXT_PUBLIC_RPC_URL,
+    networkPassphrase: config.networkPassphrase,
+    rpcUrl: config.rpcUrl,
   });
 }
 

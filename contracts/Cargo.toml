@@ -2,7 +2,7 @@
 [workspace]
 resolver = "2"
 
-members = ["zafegard-policy"]
+members = ["coffe_sponsor"]
 
 [workspace.dependencies]
 soroban-sdk = { version = "22.0.0" }
