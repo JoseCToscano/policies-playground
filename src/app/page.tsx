@@ -94,7 +94,7 @@ export default function Home() {
             <div className="max-w-4xl mx-auto">
               <div className="relative w-full h-0 pb-[56.25%] overflow-hidden rounded-3xl shadow-2xl border border-gray-200">
                 <iframe
-                  src="https://www.youtube.com/embed/caj7q1o8N70"
+                  src="https://www.youtube.com/watch?v=paLhmW0AiYc"
                   title="YouTube video player"
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
