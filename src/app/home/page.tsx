@@ -10,6 +10,7 @@ import {
   Plus,
   Loader2,
   Fingerprint,
+  ArrowRightLeft,
 } from "lucide-react"
 import { Keypair } from '@stellar/stellar-sdk'
 import { useSep10 } from '~/hooks/useSep10'
@@ -23,6 +24,7 @@ import { Badge } from "~/components/ui/badge"
 import { LoadingDots } from '~/components/ui/loading-dots'
 import { NetworkSwitcher } from '~/components/network-switcher'
 import { useStellar } from '~/contexts/stellar-context'
+import { TransferModal } from '~/app/home/_components/transfer-modal'
 const USDC = "USDC-GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 const EURC = "EURC-GB3Q6QDZYTHWT7E5PVS3W7FUT5GVAFC5KSZFFLPU25GO7VTC3NM2ZTVO";
 
@@ -31,6 +33,7 @@ function HomeContent() {
   const { network } = useStellar();
 
   const [isAttachingPolicy, setIsAttachingPolicy] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
 
   const { data: contractBalance } = api.stellar.getContractBalance.useQuery({ contractAddress: contractId! }, {
@@ -242,6 +245,13 @@ function HomeContent() {
                 {contractId && (
                   <div className="space-y-2">
                     <Button
+                      onClick={() => setIsTransferModalOpen(true)}
+                      className="w-full bg-gray-600 text-xs text-white hover:bg-gray-700"
+                    >
+                      <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
+                      Transfer
+                    </Button>
+                    <Button
                       onClick={handleAddSigner}
                       className="w-full bg-indigo-600 text-xs text-white hover:bg-indigo-700"
                       disabled={loading}
@@ -311,6 +321,15 @@ function HomeContent() {
           </div>
         </div>
       </div>
+      
+      {/* Transfer Modal */}
+      {contractId && (
+        <TransferModal
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+          currentWalletId={contractId}
+        />
+      )}
     </div>
   )
 }

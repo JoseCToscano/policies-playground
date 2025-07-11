@@ -234,10 +234,9 @@ export const useSmartWallet = () => {
     async function transfer({ keypair, to, amount, keyId }: { keyId?: string | null, keypair?: Keypair, to: string, amount: number }) {
         if (!contractId) return;
 
-        const fundPubkey = await getFundPubkey();
         const at = await native.transfer({
             from: contractId,
-            to: fundPubkey,
+            to: to,
             amount: BigInt(amount),
         });
 
